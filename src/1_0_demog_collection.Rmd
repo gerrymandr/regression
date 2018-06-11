@@ -20,7 +20,7 @@ acs.tables.install()
 
 ```{r}
 #make the region for which I want ACS data
-acs.wi <- geo.make(state = 'WI', county = '*', tract = '*', block.group = '*')
+acs.wi <- geo.make(state = 'WI', county = 'Ozaukee', tract = '*', block.group = '*')
 ```
 
 Collecting ACS data for various categories:
