@@ -3,6 +3,8 @@
 author: "Claire Kelling"
 date: "June 11, 2018"
 output: html_document
+editor_options: 
+  chunk_output_type: console
 ---
   
   ```{r setup, include=FALSE}
@@ -27,6 +29,8 @@ library(CARBayes)
 library(gridExtra)
 library(xtable)
 library(stringi)
+require(rgdal)
+
 ```
 
 Now, we will load the data, including the following:
@@ -40,7 +44,15 @@ load(file = "C:/Users/ckell/Dropbox/Gerrycamp Regressions Project/Alaska Project
 load(file = "C:/Users/ckell/Dropbox/Gerrycamp Regressions Project/Alaska Project/demog.Rdata")
 #voting data
 load(file = "C:/Users/ckell/Dropbox/Gerrycamp Regressions Project/Alaska Project/vote.Rdata")
+
+prec_shp <- readOGR(dsn = "C:/Users/ckell/Dropbox/Gerrycamp Regressions Project/Alaska Project/data/SW Proc Shape Files", layer = "2013-SW-Proc-Shape-files")
 ```
+
+Exploring shape file
+```{r}
+plot(prec_shp)
+```
+
 
 Now we need to join the spatial polygons and the demographic/voting data.
 ```{r}
