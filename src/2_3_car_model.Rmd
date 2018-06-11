@@ -45,9 +45,9 @@ load(file = "C:/Users/ckell/Dropbox/Gerrycamp Regressions Project/Alaska Project
 Now we need to join the spatial polygons and the demographic/voting data.
 ```{r}
 #re-formatting to add the data to the SpatialPolygonsDataFrame
-ward_shape$id <- row.names(ward_shape)
-ward_shape@data <- left_join(ward_shape@data, demog, by = (GEOID = "GEOID"))
-ward_shape@data <- left_join(ward_shape@data, vote, by = (GEOID = "GEOID"))
+precinct_shape$id <- row.names(precinct_shape)
+precinct_shape@data <- left_join(precinct_shape@data, demog, by = (GEOID = "GEOID"))
+precinct_shape@data <- left_join(precinct_shape@data, vote, by = (GEOID = "GEOID"))
 ```
 
 
@@ -55,14 +55,16 @@ Our first step in terms of modeling will be to run our model in a linear model a
 ```{r}
 #non-spatial modeling
 form <- vote_count ~ median_income + upemp_rate+total_pop+perc_male+med_age+herf_index
-model <- lm(formula=form, data=ward_shape@data)
+model <- lm(formula=form, data=precinct_shape@data)
 resid.model <- residuals(model)
+
+
 
 #test for spatial dependence
 #null hypothesis of no spatial autocorrelation (alternative of positive spatial autocorrelation)
 #also computes Moran's I statistic 
 #if p-value < 0.05, we conclude there is positve spatial autocorrelation
-W.nb <- poly2nb(ward_shape, row.names = rownames(ward_shape@data))
+W.nb <- poly2nb(precinct_shape, row.names = rownames(precinct_shape@data))
 
 ##############
 ### Creating adjacency matrix from nb
@@ -86,18 +88,18 @@ Now, we will fit both the Leroux and the BYM model.
 #Leroux Model
 ##############
 #binary
-model.ler.bin <- S.CARleroux(formula=form, data=ward_shape@data,
+model.ler.bin <- S.CARleroux(formula=form, data=precinct_shape@data,
                              family="poisson", W=bin_W, burnin=20000, n.sample=120000, thin=10)
 
 ##############
 # BYM Model
 ##############
 #binary
-model.bym.bin <- S.CARbym(formula=form, data=ward_shape@data,
+model.bym.bin <- S.CARbym(formula=form, data=precinct_shape@data,
                           family="poisson", W=add_W, burnin=20000, n.sample=120000, thin=10)
 
 #save the models for later reference, takes over an hour to run
-save(model.bym.add, model.bym.bin, model.ler.add, model.ler.bin, file = "C:/Users/ckell/Dropbox/Gerrycamp Regressions Project/Alaska Project/prelim_fit/ward_shape.Rdata")
+save(model.bym.add, model.bym.bin, model.ler.add, model.ler.bin, file = "C:/Users/ckell/Dropbox/Gerrycamp Regressions Project/Alaska Project/prelim_fit/precinct_shape.Rdata")
 
 ##############
 # BYM Model
@@ -114,7 +116,7 @@ model.ler.bin$modelfit
 
 Now, I will also include a model that accounts for spatial autocorrelation.
 ```{r}
-sp.sglmm.fit <- sparse.sglmm(formula = form,data=ward_shape_geog@data, family = poisson, A = W_mat,
+sp.sglmm.fit <- sparse.sglmm(formula = form,data=precinct_shape_geog@data, family = poisson, A = W_mat,
                              verbose = TRUE) #tune = list(sigma.s = 0.02)
 
 

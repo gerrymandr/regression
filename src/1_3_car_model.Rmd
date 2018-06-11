@@ -58,6 +58,8 @@ form <- vote_count ~ median_income + upemp_rate+total_pop+perc_male+med_age+herf
 model <- lm(formula=form, data=ward_shape@data)
 resid.model <- residuals(model)
 
+glm_model <- glm(formula=form, family = "poisson", data=ward_shape@data)
+
 #test for spatial dependence
 #null hypothesis of no spatial autocorrelation (alternative of positive spatial autocorrelation)
 #also computes Moran's I statistic 
