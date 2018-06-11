@@ -1,0 +1,120 @@
+---
+title: "CAR Model"
+author: "Claire Kelling"
+date: "June 11, 2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+The purpose of this code is to fit the CAR model to voting data, aggregated by ward. We only have Census data by district and/or block group so this presents a spatial mismatch file. 
+
+First, we will install all necessary packages.
+```{r}
+# Packages:
+library(sp)
+library(spdep)
+library(classInt)
+library(fields)
+library(ggplot2)
+library(dplyr)
+library(ade4) 
+library(igraph) 
+library(CARBayesdata)
+library(CARBayes)
+library(gridExtra)
+library(xtable)
+library(stringi)
+```
+
+Now, we will load the data, including the following:
+* shape files
+* demographics
+* voting data
+```{r}
+#shape files
+load(file = "C:/Users/ckell/Dropbox/Gerrycamp Regressions Project/Mayer Project/ward_shape.Rdata")
+#demographics
+load(file = "C:/Users/ckell/Dropbox/Gerrycamp Regressions Project/Mayer Project/demog.Rdata")
+#voting data
+load(file = "C:/Users/ckell/Dropbox/Gerrycamp Regressions Project/Mayer Project/vote.Rdata")
+```
+
+Now we need to join the spatial polygons and the demographic/voting data.
+```{r}
+#re-formatting to add the data to the SpatialPolygonsDataFrame
+ward_shape$id <- row.names(ward_shape)
+ward_shape@data <- left_join(ward_shape@data, demog, by = (GEOID = "GEOID"))
+ward_shape@data <- left_join(ward_shape@data, vote, by = (GEOID = "GEOID"))
+```
+
+
+Our first step in terms of modeling will be to run our model in a linear model and to test for spatial dependence. 
+```{r}
+#non-spatial modeling
+form <- vote_count ~ median_income + upemp_rate+total_pop+perc_male+med_age+herf_index
+model <- lm(formula=form, data=ward_shape@data)
+resid.model <- residuals(model)
+
+#test for spatial dependence
+#null hypothesis of no spatial autocorrelation (alternative of positive spatial autocorrelation)
+#also computes Moran's I statistic 
+#if p-value < 0.05, we conclude there is positve spatial autocorrelation
+W.nb <- poly2nb(ward_shape, row.names = rownames(ward_shape@data))
+
+##############
+### Creating adjacency matrix from nb
+##############
+W_mat <- nb2mat(W.nb, style="B")
+
+#############
+### Moran's I Test
+#############
+
+#addition
+W.add.list <- nb2listw(add_nb, style="B")
+moran.mc(x=resid.model, listw=W.add.list, nsim=1000)
+
+```
+
+
+Now, we will fit both the Leroux and the BYM model.
+```{r}
+##############
+#Leroux Model
+##############
+#binary
+model.ler.bin <- S.CARleroux(formula=form, data=ward_shape@data,
+                              family="poisson", W=bin_W, burnin=20000, n.sample=120000, thin=10)
+
+##############
+# BYM Model
+##############
+#binary
+model.bym.bin <- S.CARbym(formula=form, data=ward_shape@data,
+                           family="poisson", W=add_W, burnin=20000, n.sample=120000, thin=10)
+
+#save the models for later reference, takes over an hour to run
+save(model.bym.add, model.bym.bin, model.ler.add, model.ler.bin, file = "C:/Users/ckell/Dropbox/Gerrycamp Regressions Project/Mayer Project/prelim_fit/ward_shape.Rdata")
+
+##############
+# BYM Model
+##############
+#  add bym
+model.bym.add$modelfit
+#  bin bym
+model.bym.bin$modelfit
+#  add ler
+model.ler.add$modelfit
+#  bin ler
+model.ler.bin$modelfit
+```
+
+Now, I will also include a model that accounts for spatial autocorrelation.
+```{r}
+sp.sglmm.fit <- sparse.sglmm(formula = form,data=ward_shape_geog@data, family = poisson, A = W_mat,
+                                 verbose = TRUE) #tune = list(sigma.s = 0.02)
+```
+
