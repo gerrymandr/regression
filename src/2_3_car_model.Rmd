@@ -1,11 +1,11 @@
 ---
-title: "CAR Model, Wisconsin"
+  title: "CAR Model, Alaska"
 author: "Claire Kelling"
 date: "June 11, 2018"
 output: html_document
 ---
-
-```{r setup, include=FALSE}
+  
+  ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
@@ -30,16 +30,16 @@ library(stringi)
 ```
 
 Now, we will load the data, including the following:
-* shape files
+  * shape files
 * demographics
 * voting data
 ```{r}
 #shape files
-load(file = "C:/Users/ckell/Dropbox/Gerrycamp Regressions Project/Mayer Project/ward_shape.Rdata")
+load(file = "C:/Users/ckell/Dropbox/Gerrycamp Regressions Project/Alaska Project/precinct_shape.Rdata")
 #demographics
-load(file = "C:/Users/ckell/Dropbox/Gerrycamp Regressions Project/Mayer Project/demog.Rdata")
+load(file = "C:/Users/ckell/Dropbox/Gerrycamp Regressions Project/Alaska Project/demog.Rdata")
 #voting data
-load(file = "C:/Users/ckell/Dropbox/Gerrycamp Regressions Project/Mayer Project/vote.Rdata")
+load(file = "C:/Users/ckell/Dropbox/Gerrycamp Regressions Project/Alaska Project/vote.Rdata")
 ```
 
 Now we need to join the spatial polygons and the demographic/voting data.
@@ -87,17 +87,17 @@ Now, we will fit both the Leroux and the BYM model.
 ##############
 #binary
 model.ler.bin <- S.CARleroux(formula=form, data=ward_shape@data,
-                              family="poisson", W=bin_W, burnin=20000, n.sample=120000, thin=10)
+                             family="poisson", W=bin_W, burnin=20000, n.sample=120000, thin=10)
 
 ##############
 # BYM Model
 ##############
 #binary
 model.bym.bin <- S.CARbym(formula=form, data=ward_shape@data,
-                           family="poisson", W=add_W, burnin=20000, n.sample=120000, thin=10)
+                          family="poisson", W=add_W, burnin=20000, n.sample=120000, thin=10)
 
 #save the models for later reference, takes over an hour to run
-save(model.bym.add, model.bym.bin, model.ler.add, model.ler.bin, file = "C:/Users/ckell/Dropbox/Gerrycamp Regressions Project/Mayer Project/prelim_fit/ward_shape.Rdata")
+save(model.bym.add, model.bym.bin, model.ler.add, model.ler.bin, file = "C:/Users/ckell/Dropbox/Gerrycamp Regressions Project/Alaska Project/prelim_fit/ward_shape.Rdata")
 
 ##############
 # BYM Model
@@ -115,7 +115,7 @@ model.ler.bin$modelfit
 Now, I will also include a model that accounts for spatial autocorrelation.
 ```{r}
 sp.sglmm.fit <- sparse.sglmm(formula = form,data=ward_shape_geog@data, family = poisson, A = W_mat,
-                                 verbose = TRUE) #tune = list(sigma.s = 0.02)
+                             verbose = TRUE) #tune = list(sigma.s = 0.02)
 
 
 #summary(sp.sglmm.fit)
