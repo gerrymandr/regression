@@ -46,11 +46,14 @@ load(file = "C:/Users/ckell/Dropbox/Gerrycamp Regressions Project/Alaska Project
 load(file = "C:/Users/ckell/Dropbox/Gerrycamp Regressions Project/Alaska Project/vote.Rdata")
 
 prec_shp <- readOGR(dsn = "C:/Users/ckell/Dropbox/Gerrycamp Regressions Project/Alaska Project/data/SW Proc Shape Files", layer = "2013-SW-Proc-Shape-files")
+
+dist_shp <- readOGR(dsn = "C:/Users/ckell/Dropbox/Gerrycamp Regressions Project/Alaska Project/data/2013-HD-ProclamationPlan", layer = "2013ProclamationPlan")
 ```
 
 Exploring shape file
 ```{r}
 plot(prec_shp)
+plot(dist_shp)
 ```
 
 
