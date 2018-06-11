@@ -20,41 +20,42 @@ acs.tables.install()
 
 ```{r}
 #make the region for which I want ACS data
-acs.wi <- geo.make(state = 'AK', county = '*', tract = '*', block.group = '*')
+acs.ak <- geo.make(state = 'AK', county = "*")
+acs.ak <- geo.make(state = 'AK', statelegislativedistrictlowerchamber = "*")
 ```
 
 Collecting ACS data for various categories:
 ```{r}
 #income
-acs_income <- acs.fetch(geography = acs.wi, endyear = '2015', table.number = 'B19001', col.names = 'pretty')
-income <- data.frame(acs_income@geography$state,acs_income@geography$county,acs_income@geography$tract,
-                     acs_income@geography$blockgroup, estimate(acs_income))
+acs_income <- acs.fetch(geography = acs.ak, endyear = '2015', table.number = 'B19001', col.names = 'pretty')
+income <- data.frame(acs_income@geography$state, acs_income@geography$county)
+income <- data.frame(acs_income@geography$state, acs_income@geography$statelegislativedistrictlowerchamber)
 
-acs_income2 <- acs.fetch(geography = acs.wi, endyear = '2015', table.number = 'B19013', col.names = 'pretty')
+acs_income2 <- acs.fetch(geography = acs.ak, endyear = '2015', table.number = 'B19013', col.names = 'pretty')
 med_income <- data.frame(estimate(acs_income2))
 
 #employment
-acs_employment <- acs.fetch(geography = acs.wi, endyear = '2015', table.number = 'B23025', col.names = 'pretty')
+acs_employment <- acs.fetch(geography = acs.ak, endyear = '2015', table.number = 'B23025', col.names = 'pretty')
 employment <- data.frame(estimate(acs_employment))
 
 #total population
-acs_tot_pop <- acs.fetch(geography=acs.wi, endyear=2015, table.number="B01003", col.name="pretty")
+acs_tot_pop <- acs.fetch(geography=acs.ak, endyear=2015, table.number="B01003", col.name="pretty")
 total_pop <- data.frame(estimate(acs_tot_pop))
 
 #poverty- all of the values are NA
-#acs_poverty <- acs.fetch(geography=acs.wi, endyear=2015, table.number="B17001", col.name="pretty")
+#acs_poverty <- acs.fetch(geography=acs.ak, endyear=2015, table.number="B17001", col.name="pretty")
 #poverty <- data.frame(estimate(acs_poverty))
 
 #gender and age (not separate)
-acs_gen_age <- acs.fetch(geography=acs.wi, endyear=2015, table.number="B01001", col.name="pretty")
+acs_gen_age <- acs.fetch(geography=acs.ak, endyear=2015, table.number="B01001", col.name="pretty")
 gen_age <- data.frame(estimate(acs_gen_age))
 
 #median age
-acs_med_age <- acs.fetch(geography=acs.wi, endyear=2015, table.number="B01002", col.name="pretty")
+acs_med_age <- acs.fetch(geography=acs.ak, endyear=2015, table.number="B01002", col.name="pretty")
 med_age <- data.frame(estimate(acs_med_age))
 
 #measure of ethnic diversity
-acs_race <- acs.fetch(geography=acs.wi, endyear=2015, table.number="B02001", col.name="pretty")
+acs_race <- acs.fetch(geography=acs.ak, endyear=2015, table.number="B02001", col.name="pretty")
 race <- data.frame(estimate(acs_race))
 ```
 
