@@ -188,9 +188,15 @@ moran.mc(x=c.r.resid.glm, listw=W.list.con, nsim=1000, zero.policy = TRUE)
 ```
 
 
-Need to eliminate the islands with neighbors
+Need to eliminate the islands with no neighbors
 ```{r}
+no_nb <- which(rowSums(W_mat_con) == 0)
 
+
+nonb_W <- W_mat_con[-no_nb, -no_nb]
+nonb_shp <- con_shp[-no_nb,]
+
+nonb_Wnb <- poly2nb(nonb_shp, row.names = rownames(t2@data))
 ```
 
 
@@ -206,11 +212,11 @@ r.model.ler <- S.CARleroux(formula=r.form, data=no_rep@data,
                              family="poisson", W=W_mat_nor, burnin=20000, n.sample=120000, thin=10)
 
 
-c.d.model.ler <- S.CARleroux(formula=d.form, data=con_shp@data,
-                             family="poisson", W=W_mat_con, burnin=20000, n.sample=120000, thin=10)
+c.d.model.ler <- S.CARleroux(formula=d.form, data=nonb_shp@data,
+                             family="poisson", W=nonb_W, burnin=20000, n.sample=120000, thin=10)
 
-c.r.model.ler <- S.CARleroux(formula=r.form, data=con_shp@data,
-                             family="poisson", W=W_mat_con, burnin=20000, n.sample=120000, thin=10)
+c.r.model.ler <- S.CARleroux(formula=r.form, data=nonb_shp@data,
+                             family="poisson", W=nonb_W, burnin=20000, n.sample=120000, thin=10)
 
 ##############
 # BYM Model
@@ -221,11 +227,12 @@ d.model.bym <- S.CARbym(formula=d.form, data=no_dem@data,
 r.model.bym <- S.CARbym(formula=r.form, data=no_rep@data,
                           family="poisson", W=W_mat_nor, burnin=20000, n.sample=120000, thin=10)
 
-c.d.model.bym <- S.CARbym(formula=d.form, data=con_shp@data,
-                             family="poisson", W=W_mat_con, burnin=20000, n.sample=120000, thin=10)
+c.d.model.bym <- S.CARbym(formula=d.form, data=nonb_shp@data,
+                             family="poisson", W=nonb_W, burnin=20000, n.sample=120000, thin=10)
 
-c.r.model.bym <- S.CARbym(formula=r.form, data=con_shp@data,
-                             family="poisson", W=W_mat_con, burnin=20000, n.sample=120000, thin=10)
+
+c.r.model.bym <- S.CARbym(formula=r.form, data=nonb_shp@data,
+                             family="poisson", W=nonb_W, burnin=20000, n.sample=120000, thin=10)
 
 #save the models for later reference, takes over an hour to run
 save(d.model.ler, r.model.ler, d.model.bym, r.model.bym, file = "C:/Users/ckell/Dropbox/Gerrycamp Regressions Project/Alaska Project/prelim_fit/precinct_shape.Rdata")
@@ -252,10 +259,10 @@ r.sp.sglmm.fit <- sparse.sglmm(formula = r.form,data=no_rep@data, family = poiss
                              verbose = TRUE) #tune = list(sigma.s = 0.02)
 
 
-c.d.sp.sglmm.fit <- sparse.sglmm(formula = d.form,data=con_shp@data, family = poisson, A = W_mat_con,
+c.d.sp.sglmm.fit <- sparse.sglmm(formula = d.form,data=nonb_shp@data, family = poisson, A = nonb_W,
                              verbose = TRUE) #tune = list(sigma.s = 0.02)
 
-c.r.sp.sglmm.fit <- sparse.sglmm(formula = r.form,data=con_shp@data, family = poisson, A = W_mat_con,
+c.r.sp.sglmm.fit <- sparse.sglmm(formula = r.form,data=nonb_shp@data, family = poisson, A = nonb_W,
                              verbose = TRUE) #tune = list(sigma.s = 0.02)
 
 #summary(sp.sglmm.fit)
@@ -264,6 +271,13 @@ d.sp.sglmm.fit$pD
 
 r.sp.sglmm.fit$dic
 r.sp.sglmm.fit$pD
+
+c.d.sp.sglmm.fit$dic
+c.d.sp.sglmm.fit$pD
+
+c.r.sp.sglmm.fit$dic
+c.r.sp.sglmm.fit$pD
+
 ```
 
 Now, we need to compare coefficients to see if there was any spatial autocorrelation.
