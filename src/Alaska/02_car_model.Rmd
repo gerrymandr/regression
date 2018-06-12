@@ -40,20 +40,27 @@ Now, we will load the data, including the following:
 ```{r}
 #shape files
 load(file = "C:/Users/ckell/Dropbox/Gerrycamp Regressions Project/Alaska Project/precinct_shape.Rdata")
-#demographics
-load(file = "C:/Users/ckell/Dropbox/Gerrycamp Regressions Project/Alaska Project/demog.Rdata")
-#voting data
-load(file = "C:/Users/ckell/Dropbox/Gerrycamp Regressions Project/Alaska Project/vote.Rdata")
 
+#initial precinct shape files, showing some wrong shapes
 prec_shp <- readOGR(dsn = "C:/Users/ckell/Dropbox/Gerrycamp Regressions Project/Alaska Project/data/SW Proc Shape Files", layer = "2013-SW-Proc-Shape-files")
 
 dist_shp <- readOGR(dsn = "C:/Users/ckell/Dropbox/Gerrycamp Regressions Project/Alaska Project/data/2013-HD-ProclamationPlan", layer = "2013ProclamationPlan")
+
+#voting and demographic data
+demog_vote <- read.csv("C:/Users/ckell/Dropbox/Gerrycamp Regressions Project/Alaska Project/AKDataByPrecinct.csv")
+
+#redo shape file from github source
+# https://github.com/aaron-strauss/precinct-shapefiles/blob/master/ak/2012_ak_precincts.zip
+prec_shp2 <- readOGR(dsn = "C:/Users/ckell/Dropbox/Gerrycamp Regressions Project/Alaska Project/data/2012_ak_precincts", layer = "SW Amended Precinct shape files")
+
 ```
 
 Exploring shape file
 ```{r}
 plot(prec_shp)
 plot(dist_shp)
+
+plot(prec_shp2)
 ```
 
 
