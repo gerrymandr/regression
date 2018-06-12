@@ -42,7 +42,7 @@ Now, we will load the data, including the following:
 load(file = "C:/Users/ckell/Dropbox/Gerrycamp Regressions Project/Alaska Project/precinct_shape.Rdata")
 
 #initial precinct shape files, showing some wrong shapes
-prec_shp <- readOGR(dsn = "C:/Users/ckell/Dropbox/Gerrycamp Regressions Project/Alaska Project/data/SW Proc Shape Files", layer = "2013-SW-Proc-Shape-files")
+prec_shp <- readOGR(dsn = "C:/Users/ckell/Dropbox/Gerrycamp Regressions Project/Alaska Project/data/2013-SW-Precinct-Proc-Plan", layer = "2013-SW-Proc-Shape-files")
 
 dist_shp <- readOGR(dsn = "C:/Users/ckell/Dropbox/Gerrycamp Regressions Project/Alaska Project/data/2013-HD-ProclamationPlan", layer = "2013ProclamationPlan")
 
@@ -60,33 +60,70 @@ Exploring shape file
 plot(prec_shp)
 plot(dist_shp)
 
-plot(prec_shp2)
+#new shape file for precincts
+plot(prec_shp2) #still has the precincts on the right hand side of the graph
 ```
 
 
 Now we need to join the spatial polygons and the demographic/voting data.
 ```{r}
-#re-formatting to add the data to the SpatialPolygonsDataFrame
-precinct_shape$id <- row.names(precinct_shape)
-precinct_shape@data <- left_join(precinct_shape@data, demog, by = (GEOID = "GEOID"))
-precinct_shape@data <- left_join(precinct_shape@data, vote, by = (GEOID = "GEOID"))
+#re-formatting to add the data to the 
+View(prec_shp@data)
+
+#check classes
+class(prec_shp@data$DISTRICT)
+
+#change column name for ID variables for which we will join
+colnames(demog_vote)[1] <- "GEOID"
+colnames(prec_shp@data)[3] <- "GEOID"
+
+#change to character variable
+demog_vote$GEOID <- as.character(demog_vote$GEOID)
+prec_shp@data$GEOID <- as.character(prec_shp@data$GEOID)
+
+#join on GEOID
+prec_shp@data <- left_join(prec_shp@data, demog_vote, by = (GEOID = "GEOID"))
+
+length(which(is.na(test$sumRENTED)))
+nrow(test)
+
+nrow(demog_vote)
+nrow(prec_shp@data)
+
+class(demog_vote$GEOID)
+class(prec_shp@data$GEOID)
 ```
 
 
 Our first step in terms of modeling will be to run our model in a linear model and to test for spatial dependence. 
 ```{r}
+#we need to decide variables to use in our analysis
+colnames(demog_vote)
+#contested - B if it is contested
+#Mayer: D.Pres.Vote, R.Pres.Vote, sumTOTALPOP, sumBLACK, sumHISPANIC
+#Mayer Response: D.Dist.Vote, R.Dist.Vote
+#TP (third party)
+
+class(prec_shp@data$R.Pres.Vote)
+
 #non-spatial modeling
-form <- vote_count ~ median_income + upemp_rate+total_pop+perc_male+med_age+herf_index
-model <- lm(formula=form, data=precinct_shape@data)
+form <- D.Dist.Vote ~ D.Pres.Vote + R.Pres.Vote+sumTOTALPOP +sumBLACK + sumHISPANIC
+model <- lm(formula=form, data=prec_shp@data)
 resid.model <- residuals(model)
 
+#glm model
+glm_model <- glm(formula=form, family = "poisson", data=prec_shp@data)
 
 
 #test for spatial dependence
 #null hypothesis of no spatial autocorrelation (alternative of positive spatial autocorrelation)
 #also computes Moran's I statistic 
 #if p-value < 0.05, we conclude there is positve spatial autocorrelation
-W.nb <- poly2nb(precinct_shape, row.names = rownames(precinct_shape@data))
+W.nb <- poly2nb(prec_shp, row.names = rownames(prec_shp@data))
+
+coords <- coordinates(prec_shp)
+plot(W.nb, coords, pch = 1, cex = 0.6, add = TRUE)
+
 
 ##############
 ### Creating adjacency matrix from nb
