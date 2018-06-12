@@ -44,14 +44,14 @@ load(file = "C:/Users/ckell/Dropbox/Gerrycamp Regressions Project/Alaska Project
 #initial precinct shape files, showing some wrong shapes
 prec_shp <- readOGR(dsn = "C:/Users/ckell/Dropbox/Gerrycamp Regressions Project/Alaska Project/data/2013-SW-Precinct-Proc-Plan", layer = "2013-SW-Proc-Shape-files")
 
-dist_shp <- readOGR(dsn = "C:/Users/ckell/Dropbox/Gerrycamp Regressions Project/Alaska Project/data/2013-HD-ProclamationPlan", layer = "2013ProclamationPlan")
+#dist_shp <- readOGR(dsn = "C:/Users/ckell/Dropbox/Gerrycamp Regressions Project/Alaska Project/data/2013-HD-ProclamationPlan", layer = "2013ProclamationPlan")
 
 #voting and demographic data
 demog_vote <- read.csv("C:/Users/ckell/Dropbox/Gerrycamp Regressions Project/Alaska Project/AKDataByPrecinct.csv")
 
 #redo shape file from github source
 # https://github.com/aaron-strauss/precinct-shapefiles/blob/master/ak/2012_ak_precincts.zip
-prec_shp2 <- readOGR(dsn = "C:/Users/ckell/Dropbox/Gerrycamp Regressions Project/Alaska Project/data/2012_ak_precincts", layer = "SW Amended Precinct shape files", p4s = "+init=epsg:3338")
+#prec_shp2 <- readOGR(dsn = "C:/Users/ckell/Dropbox/Gerrycamp Regressions Project/Alaska Project/data/2012_ak_precincts", layer = "SW Amended Precinct shape files", p4s = "+init=epsg:3338")
 
 plot(prec_shp2)
 ```
@@ -108,13 +108,18 @@ colnames(demog_vote)
 class(prec_shp@data$R.Pres.Vote)
 
 #non-spatial modeling
-form <- D.Dist.Vote ~ D.Pres.Vote + R.Pres.Vote+sumTOTALPOP +sumBLACK + sumHISPANIC
-model <- lm(formula=form, data=prec_shp@data)
-resid.model <- residuals(model)
+d.form <- D.Dist.Vote ~ D.Pres.Vote + R.Pres.Vote+sumTOTALPOP +sumBLACK + sumHISPANIC
+r.form <- R.Dist.Vote ~ D.Pres.Vote + R.Pres.Vote+sumTOTALPOP +sumBLACK + sumHISPANIC
+d.model <- lm(formula=d.form, data=prec_shp@data)
+d.resid.model <- residuals(d.model)
+r.model <- lm(formula=f.form, data=prec_shp@data)
+r.resid.model <- residuals(r.model)
 
 #glm model
-glm_model <- glm(formula=form, family = "poisson", data=prec_shp@data)
-resid.glm <- residuals(model)
+d.glm_model <- glm(formula=form, family = "poisson", data=prec_shp@data)
+d.resid.glm <- residuals(model)
+r.glm_model <- glm(formula=form, family = "poisson", data=prec_shp@data)
+r.resid.glm <- residuals(model)
 
 #need to remove shape file objects with no D.Dist.Vote
 no_dem <- prec_shp[-which(is.na(prec_shp$D.Dist.Vote)),]
@@ -124,7 +129,7 @@ no_rep <- prec_shp[-which(is.na(prec_shp$R.Dist.Vote)),]
 #null hypothesis of no spatial autocorrelation (alternative of positive spatial autocorrelation)
 #also computes Moran's I statistic 
 #if p-value < 0.05, we conclude there is positve spatial autocorrelation
-W.nb <- poly2nb(prec_shp, row.names = rownames(prec_shp@data))
+#W.nb <- poly2nb(prec_shp, row.names = rownames(prec_shp@data))
 W.nb.nod <- poly2nb(no_dem, row.names = rownames(no_dem@data))
 W.nb.nor <- poly2nb(no_rep, row.names = rownames(no_rep@data))
 
@@ -137,8 +142,8 @@ plot(W.nb, coords, pch = 1, cex = 0.6, add = TRUE)
 ##############
 ### Creating adjacency matrix from nb
 ##############
-W_mat <- nb2mat(W.nb, style="B", zero.policy=TRUE) #includes some islands
-View(head(W_mat))
+#W_mat <- nb2mat(W.nb, style="B", zero.policy=TRUE) #includes some islands
+#View(head(W_mat))
 W_mat_nod <- nb2mat(W.nb.nod, style="B", zero.policy=TRUE)
 W_mat_nor <- nb2mat(W.nb.nor, style="B", zero.policy=TRUE)
 
@@ -148,12 +153,13 @@ W_mat_nor <- nb2mat(W.nb.nor, style="B", zero.policy=TRUE)
 #############
 
 #addition
-W.list <- nb2listw(W.nb, style="B", zero.policy = TRUE)
+#W.list <- nb2listw(W.nb, style="B", zero.policy = TRUE)
 W.list.nod <- nb2listw(W.nb.nod, style="B", zero.policy = TRUE)
 W.list.nor <- nb2listw(W.nb.nor, style="B", zero.policy = TRUE)
 
-moran.mc(x=resid.glm, listw=W.list, nsim=1000, zero.policy = FALSE)
-moran.mc(x=resid.glm, listw=W.list.nor, nsim=1000, zero.policy = TRUE)
+#moran.mc(x=resid.glm, listw=W.list, nsim=1000, zero.policy = FALSE)
+moran.mc(x=d.resid.glm, listw=W.list.nod, nsim=1000, zero.policy = TRUE)
+moran.mc(x=r.resid.glm, listw=W.list.nor, nsim=1000, zero.policy = TRUE)
 
 #if p-value < 0.05, we conclude there is positve spatial autocorrelation
 
@@ -166,48 +172,61 @@ Now, we will fit both the Leroux and the BYM model.
 #Leroux Model
 ##############
 #binary
-model.ler.bin <- S.CARleroux(formula=form, data=precinct_shape@data,
-                             family="poisson", W=bin_W, burnin=20000, n.sample=120000, thin=10)
+d.model.ler <- S.CARleroux(formula=d.form, data=no_dem@data,
+                             family="poisson", W=W_mat_nod, burnin=20000, n.sample=120000, thin=10)
+
+r.model.ler <- S.CARleroux(formula=r.form, data=no_rep@data,
+                             family="poisson", W=W_mat_nor, burnin=20000, n.sample=120000, thin=10)
 
 ##############
 # BYM Model
 ##############
 #binary
-model.bym.bin <- S.CARbym(formula=form, data=precinct_shape@data,
-                          family="poisson", W=add_W, burnin=20000, n.sample=120000, thin=10)
+d.model.bym <- S.CARbym(formula=d.form, data=no_dem@data,
+                          family="poisson", W=W_mat_nod, burnin=20000, n.sample=120000, thin=10)
+
+r.model.bym <- S.CARbym(formula=r.form, data=no_rep@data,
+                          family="poisson", W=W_mat_nor, burnin=20000, n.sample=120000, thin=10)
+
 
 #save the models for later reference, takes over an hour to run
-save(model.bym.add, model.bym.bin, model.ler.add, model.ler.bin, file = "C:/Users/ckell/Dropbox/Gerrycamp Regressions Project/Alaska Project/prelim_fit/precinct_shape.Rdata")
+save(d.model.ler, r.model.ler, d.model.bym, r.model.bym, file = "C:/Users/ckell/Dropbox/Gerrycamp Regressions Project/Alaska Project/prelim_fit/precinct_shape.Rdata")
 
 ##############
 # BYM Model
 ##############
-#  add bym
-model.bym.add$modelfit
-#  bin bym
-model.bym.bin$modelfit
-#  add ler
-model.ler.add$modelfit
-#  bin ler
-model.ler.bin$modelfit
+#  dem ler
+d.model.ler$modelfit
+#  rep ler
+d.model.ler$modelfit
+#  dem bym
+r.model.bym$modelfit
+#  rep bym
+r.model.bym$modelfit
 ```
 
 Now, I will also include a model that accounts for spatial autocorrelation.
 ```{r}
-sp.sglmm.fit <- sparse.sglmm(formula = form,data=precinct_shape_geog@data, family = poisson, A = W_mat,
+d.sp.sglmm.fit <- sparse.sglmm(formula = d.form,data=no_dem@data, family = poisson, A = W_mat_nod,
+                             verbose = TRUE) #tune = list(sigma.s = 0.02)
+
+r.sp.sglmm.fit <- sparse.sglmm(formula = r.form,data=no_rep@data, family = poisson, A = W_mat_nor,
                              verbose = TRUE) #tune = list(sigma.s = 0.02)
 
 
 #summary(sp.sglmm.fit)
-sp.sglmm.fit$dic
-sp.sglmm.fit$pD
+d.sp.sglmm.fit$dic
+d.sp.sglmm.fit$pD
+
+r.sp.sglmm.fit$dic
+r.sp.sglmm.fit$pD
 ```
 
 Now, we need to compare coefficients to see if there was any spatial autocorrelation.
 ```{r}
-model.bym.geog$summary.results[,1:3]
+model.bym$summary.results[,1:3]
 
-summary(sp.sglmm.fit.soc)
+summary(sp.sglmm.fit)
 ```
 
 
