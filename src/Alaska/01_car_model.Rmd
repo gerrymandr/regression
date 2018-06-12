@@ -51,8 +51,9 @@ demog_vote <- read.csv("C:/Users/ckell/Dropbox/Gerrycamp Regressions Project/Ala
 
 #redo shape file from github source
 # https://github.com/aaron-strauss/precinct-shapefiles/blob/master/ak/2012_ak_precincts.zip
-prec_shp2 <- readOGR(dsn = "C:/Users/ckell/Dropbox/Gerrycamp Regressions Project/Alaska Project/data/2012_ak_precincts", layer = "SW Amended Precinct shape files")
+prec_shp2 <- readOGR(dsn = "C:/Users/ckell/Dropbox/Gerrycamp Regressions Project/Alaska Project/data/2012_ak_precincts", layer = "SW Amended Precinct shape files", p4s = "+init=epsg:3338")
 
+plot(prec_shp2)
 ```
 
 Exploring shape file
@@ -113,6 +114,7 @@ resid.model <- residuals(model)
 
 #glm model
 glm_model <- glm(formula=form, family = "poisson", data=prec_shp@data)
+resid.glm <- residuals(model)
 
 
 #test for spatial dependence
@@ -122,21 +124,25 @@ glm_model <- glm(formula=form, family = "poisson", data=prec_shp@data)
 W.nb <- poly2nb(prec_shp, row.names = rownames(prec_shp@data))
 
 coords <- coordinates(prec_shp)
+plot(prec_shp)
 plot(W.nb, coords, pch = 1, cex = 0.6, add = TRUE)
 
+#remove empty neighbor sets
 
 ##############
 ### Creating adjacency matrix from nb
 ##############
-W_mat <- nb2mat(W.nb, style="B")
+W_mat <- nb2mat(W.nb, style="B", zero.policy=TRUE) #includes some islands
+View(head(W_mat))
+
 
 #############
 ### Moran's I Test
 #############
 
 #addition
-W.add.list <- nb2listw(add_nb, style="B")
-moran.mc(x=resid.model, listw=W.add.list, nsim=1000)
+W.list <- nb2listw(W.nb, style="B", zero.policy = TRUE)
+moran.mc(x=resid.glm, listw=W.list, nsim=1000, zero.policy = FALSE)
 
 ```
 
