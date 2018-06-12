@@ -116,12 +116,17 @@ resid.model <- residuals(model)
 glm_model <- glm(formula=form, family = "poisson", data=prec_shp@data)
 resid.glm <- residuals(model)
 
+#need to remove shape file objects with no D.Dist.Vote
+no_dem <- prec_shp[-which(is.na(prec_shp$D.Dist.Vote)),]
+no_rep <- prec_shp[-which(is.na(prec_shp$R.Dist.Vote)),]
 
 #test for spatial dependence
 #null hypothesis of no spatial autocorrelation (alternative of positive spatial autocorrelation)
 #also computes Moran's I statistic 
 #if p-value < 0.05, we conclude there is positve spatial autocorrelation
 W.nb <- poly2nb(prec_shp, row.names = rownames(prec_shp@data))
+W.nb.nod <- poly2nb(no_dem, row.names = rownames(no_dem@data))
+W.nb.nor <- poly2nb(no_rep, row.names = rownames(no_rep@data))
 
 coords <- coordinates(prec_shp)
 plot(prec_shp)
@@ -134,6 +139,8 @@ plot(W.nb, coords, pch = 1, cex = 0.6, add = TRUE)
 ##############
 W_mat <- nb2mat(W.nb, style="B", zero.policy=TRUE) #includes some islands
 View(head(W_mat))
+W_mat_nod <- nb2mat(W.nb.nod, style="B", zero.policy=TRUE)
+W_mat_nor <- nb2mat(W.nb.nor, style="B", zero.policy=TRUE)
 
 
 #############
@@ -142,7 +149,13 @@ View(head(W_mat))
 
 #addition
 W.list <- nb2listw(W.nb, style="B", zero.policy = TRUE)
+W.list.nod <- nb2listw(W.nb.nod, style="B", zero.policy = TRUE)
+W.list.nor <- nb2listw(W.nb.nor, style="B", zero.policy = TRUE)
+
 moran.mc(x=resid.glm, listw=W.list, nsim=1000, zero.policy = FALSE)
+moran.mc(x=resid.glm, listw=W.list.nor, nsim=1000, zero.policy = TRUE)
+
+#if p-value < 0.05, we conclude there is positve spatial autocorrelation
 
 ```
 
@@ -197,3 +210,6 @@ model.bym.geog$summary.results[,1:3]
 summary(sp.sglmm.fit.soc)
 ```
 
+
+need to use just contested elections
+Need to also incorporate incumbency
