@@ -7,7 +7,7 @@ editor_options:
   chunk_output_type: console
 ---
   
-  ```{r setup, include=FALSE}
+```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
@@ -38,10 +38,7 @@ Now, we will load the data, including the following:
 * demographics
 * voting data
 ```{r}
-#shape files
-load(file = "C:/Users/ckell/Dropbox/Gerrycamp Regressions Project/Alaska Project/precinct_shape.Rdata")
-
-#initial precinct shape files, showing some wrong shapes
+#precinct shape files, showing some precincts to the right of the main figure
 prec_shp <- readOGR(dsn = "C:/Users/ckell/Dropbox/Gerrycamp Regressions Project/Alaska Project/data/2013-SW-Precinct-Proc-Plan", layer = "2013-SW-Proc-Shape-files")
 
 #dist_shp <- readOGR(dsn = "C:/Users/ckell/Dropbox/Gerrycamp Regressions Project/Alaska Project/data/2013-HD-ProclamationPlan", layer = "2013ProclamationPlan")
@@ -52,17 +49,15 @@ demog_vote <- read.csv("C:/Users/ckell/Dropbox/Gerrycamp Regressions Project/Ala
 #redo shape file from github source
 # https://github.com/aaron-strauss/precinct-shapefiles/blob/master/ak/2012_ak_precincts.zip
 #prec_shp2 <- readOGR(dsn = "C:/Users/ckell/Dropbox/Gerrycamp Regressions Project/Alaska Project/data/2012_ak_precincts", layer = "SW Amended Precinct shape files", p4s = "+init=epsg:3338")
-
-plot(prec_shp2)
 ```
 
 Exploring shape file
 ```{r}
 plot(prec_shp)
-plot(dist_shp)
+#plot(dist_shp)
 
 #new shape file for precincts
-plot(prec_shp2) #still has the precincts on the right hand side of the graph
+#plot(prec_shp2) #still has the precincts on the right hand side of the graph
 ```
 
 
@@ -85,14 +80,16 @@ prec_shp@data$GEOID <- as.character(prec_shp@data$GEOID)
 #join on GEOID
 prec_shp@data <- left_join(prec_shp@data, demog_vote, by = (GEOID = "GEOID"))
 
-length(which(is.na(test$sumRENTED)))
-nrow(test)
+length(which(is.na(prec_shp@data$sumRENTED)))
+nrow(prec_shp@data)
 
 nrow(demog_vote)
 nrow(prec_shp@data)
 
 class(demog_vote$GEOID)
 class(prec_shp@data$GEOID)
+
+#we have successfully joined the two datasets
 ```
 
 
@@ -105,25 +102,44 @@ colnames(demog_vote)
 #Mayer Response: D.Dist.Vote, R.Dist.Vote
 #TP (third party)
 
-class(prec_shp@data$R.Pres.Vote)
+#approximately 50% of the data is contested (vs uncontested)
+#right now, I will just use the uncontested data
+length(c(which(is.na(prec_shp$D.Dist.Vote)), which(is.na(prec_shp$R.Dist.Vote))))
+unc <- unique(c(which(is.na(prec_shp$D.Dist.Vote)), which(is.na(prec_shp$R.Dist.Vote))))
+
+con_shp <- prec_shp[-unc,]
 
 #non-spatial modeling
 d.form <- D.Dist.Vote ~ D.Pres.Vote + R.Pres.Vote+sumTOTALPOP +sumBLACK + sumHISPANIC
 r.form <- R.Dist.Vote ~ D.Pres.Vote + R.Pres.Vote+sumTOTALPOP +sumBLACK + sumHISPANIC
 d.model <- lm(formula=d.form, data=prec_shp@data)
 d.resid.model <- residuals(d.model)
-r.model <- lm(formula=f.form, data=prec_shp@data)
+r.model <- lm(formula=r.form, data=prec_shp@data)
 r.resid.model <- residuals(r.model)
 
+c.d.model <- lm(formula=d.form, data=con_shp@data)
+c.d.resid.model <- residuals(c.d.model)
+c.r.model <- lm(formula=r.form, data=con_shp@data)
+c.r.resid.model <- residuals(c.r.model)
+
+
+
 #glm model
-d.glm_model <- glm(formula=form, family = "poisson", data=prec_shp@data)
-d.resid.glm <- residuals(model)
-r.glm_model <- glm(formula=form, family = "poisson", data=prec_shp@data)
-r.resid.glm <- residuals(model)
+d.glm_model <- glm(formula=d.form, family = "poisson", data=prec_shp@data)
+d.resid.glm <- residuals(d.glm_model)
+r.glm_model <- glm(formula=r.form, family = "poisson", data=prec_shp@data)
+r.resid.glm <- residuals(r.glm_model)
+
+c.d.glm_model <- glm(formula=d.form, family = "poisson", data=con_shp@data)
+c.d.resid.glm <- residuals(c.d.glm_model)
+c.r.glm_model <- glm(formula=r.form, family = "poisson", data=con_shp@data)
+c.r.resid.glm <- residuals(c.r.glm_model)
+
 
 #need to remove shape file objects with no D.Dist.Vote
 no_dem <- prec_shp[-which(is.na(prec_shp$D.Dist.Vote)),]
 no_rep <- prec_shp[-which(is.na(prec_shp$R.Dist.Vote)),]
+
 
 #test for spatial dependence
 #null hypothesis of no spatial autocorrelation (alternative of positive spatial autocorrelation)
@@ -132,6 +148,7 @@ no_rep <- prec_shp[-which(is.na(prec_shp$R.Dist.Vote)),]
 #W.nb <- poly2nb(prec_shp, row.names = rownames(prec_shp@data))
 W.nb.nod <- poly2nb(no_dem, row.names = rownames(no_dem@data))
 W.nb.nor <- poly2nb(no_rep, row.names = rownames(no_rep@data))
+W.nb.con <- poly2nb(con_shp, row.names = rownames(con_shp@data))
 
 coords <- coordinates(prec_shp)
 plot(prec_shp)
@@ -146,6 +163,7 @@ plot(W.nb, coords, pch = 1, cex = 0.6, add = TRUE)
 #View(head(W_mat))
 W_mat_nod <- nb2mat(W.nb.nod, style="B", zero.policy=TRUE)
 W_mat_nor <- nb2mat(W.nb.nor, style="B", zero.policy=TRUE)
+W_mat_con <- nb2mat(W.nb.con, style="B", zero.policy=TRUE)
 
 
 #############
@@ -156,12 +174,22 @@ W_mat_nor <- nb2mat(W.nb.nor, style="B", zero.policy=TRUE)
 #W.list <- nb2listw(W.nb, style="B", zero.policy = TRUE)
 W.list.nod <- nb2listw(W.nb.nod, style="B", zero.policy = TRUE)
 W.list.nor <- nb2listw(W.nb.nor, style="B", zero.policy = TRUE)
+W.list.con <- nb2listw(W.nb.con, style="B", zero.policy = TRUE)
 
 #moran.mc(x=resid.glm, listw=W.list, nsim=1000, zero.policy = FALSE)
 moran.mc(x=d.resid.glm, listw=W.list.nod, nsim=1000, zero.policy = TRUE)
 moran.mc(x=r.resid.glm, listw=W.list.nor, nsim=1000, zero.policy = TRUE)
 
+moran.mc(x=c.d.resid.glm, listw=W.list.con, nsim=1000, zero.policy = TRUE)
+moran.mc(x=c.r.resid.glm, listw=W.list.con, nsim=1000, zero.policy = TRUE)
+
 #if p-value < 0.05, we conclude there is positve spatial autocorrelation
+
+```
+
+
+Need to eliminate the islands with neighbors
+```{r}
 
 ```
 
@@ -171,23 +199,33 @@ Now, we will fit both the Leroux and the BYM model.
 ##############
 #Leroux Model
 ##############
-#binary
 d.model.ler <- S.CARleroux(formula=d.form, data=no_dem@data,
                              family="poisson", W=W_mat_nod, burnin=20000, n.sample=120000, thin=10)
 
 r.model.ler <- S.CARleroux(formula=r.form, data=no_rep@data,
                              family="poisson", W=W_mat_nor, burnin=20000, n.sample=120000, thin=10)
 
+
+c.d.model.ler <- S.CARleroux(formula=d.form, data=con_shp@data,
+                             family="poisson", W=W_mat_con, burnin=20000, n.sample=120000, thin=10)
+
+c.r.model.ler <- S.CARleroux(formula=r.form, data=con_shp@data,
+                             family="poisson", W=W_mat_con, burnin=20000, n.sample=120000, thin=10)
+
 ##############
 # BYM Model
 ##############
-#binary
 d.model.bym <- S.CARbym(formula=d.form, data=no_dem@data,
                           family="poisson", W=W_mat_nod, burnin=20000, n.sample=120000, thin=10)
 
 r.model.bym <- S.CARbym(formula=r.form, data=no_rep@data,
                           family="poisson", W=W_mat_nor, burnin=20000, n.sample=120000, thin=10)
 
+c.d.model.bym <- S.CARbym(formula=d.form, data=con_shp@data,
+                             family="poisson", W=W_mat_con, burnin=20000, n.sample=120000, thin=10)
+
+c.r.model.bym <- S.CARbym(formula=r.form, data=con_shp@data,
+                             family="poisson", W=W_mat_con, burnin=20000, n.sample=120000, thin=10)
 
 #save the models for later reference, takes over an hour to run
 save(d.model.ler, r.model.ler, d.model.bym, r.model.bym, file = "C:/Users/ckell/Dropbox/Gerrycamp Regressions Project/Alaska Project/prelim_fit/precinct_shape.Rdata")
@@ -213,6 +251,12 @@ d.sp.sglmm.fit <- sparse.sglmm(formula = d.form,data=no_dem@data, family = poiss
 r.sp.sglmm.fit <- sparse.sglmm(formula = r.form,data=no_rep@data, family = poisson, A = W_mat_nor,
                              verbose = TRUE) #tune = list(sigma.s = 0.02)
 
+
+c.d.sp.sglmm.fit <- sparse.sglmm(formula = d.form,data=con_shp@data, family = poisson, A = W_mat_con,
+                             verbose = TRUE) #tune = list(sigma.s = 0.02)
+
+c.r.sp.sglmm.fit <- sparse.sglmm(formula = r.form,data=con_shp@data, family = poisson, A = W_mat_con,
+                             verbose = TRUE) #tune = list(sigma.s = 0.02)
 
 #summary(sp.sglmm.fit)
 d.sp.sglmm.fit$dic
