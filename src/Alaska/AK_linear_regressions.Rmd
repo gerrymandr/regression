@@ -1,0 +1,66 @@
+---
+title: "Mayer Regression Work"
+author: "Coly Elhai"
+date: "June 11, 2018"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Read in precinct data
+
+```{r}
+setwd("C:/Users/elhai/Dropbox/Gerrycamp Regressions Project/Alaska Project")
+AKData <- read.csv("AKDataByPrecinct.csv", header = TRUE)
+
+
+AKData$IncumD_Pop <- AKData$Incumbent.D*AKData$sumTOTALPOP
+AKData$IncumR_Pop <- AKData$Incumbent.R*AKData$sumTOTALPOP
+
+AKDataContested<- AKData [which(AKData$Contested == "B"),]
+
+model.Dem <- lm(D.Dist.Vote ~ D.Pres.Vote + R.Pres.Vote + sumTOTALPOP + sumBLACK + sumWHITE + sumHISPANIC +IncumD_Pop + IncumR_Pop, data = AKDataContested)
+
+model.Rep <- lm(R.Dist.Vote ~ D.Pres.Vote + R.Pres.Vote + sumTOTALPOP + sumBLACK + sumWHITE + sumHISPANIC +IncumD_Pop + IncumR_Pop, data = AKDataContested)
+
+summary(model.Dem)
+summary(model.Rep)
+
+coeffs.Dem <-summary(model.Dem)$coefficients[,1]
+coeffs.Rep <-summary(model.Rep)$coefficients[,1]
+
+coeffs.Dem[8] <- 0
+coeffs.Dem[9] <- 0
+coeffs.Rep[8] <- 0
+coeffs.Rep[9] <- 0
+
+AKDataContestedColumns <- AKDataContested[,c("R.Dist.Vote","D.Pres.Vote", "R.Pres.Vote", "sumTOTALPOP", "sumBLACK", "sumWHITE", "sumHISPANIC", "IncumD_Pop", "IncumR_Pop")]
+
+dat <- AKData[,c("R.Dist.Vote","D.Pres.Vote", "R.Pres.Vote", "sumTOTALPOP", "sumBLACK", "sumWHITE", "sumHISPANIC", "IncumD_Pop", "IncumR_Pop")]
+
+AKDataContestedColumns <- AKDataContestedColumns[,-c(1)]
+AKDataContestedColumns$int <- rep(1, nrow(AKDataContestedColumns))
+
+AKDataContestedColumns <- cbind(AKDataContestedColumns[,9], AKDataContestedColumns[,1:8])
+AKDataContestedColumns <- cbind(dat[,9], dat[,1:8])
+
+tableDem <- as.matrix(dat)%*%coeffs.Dem
+tableDem <- as.numeric(tableDem)
+tableDem <- cbind(tableDem, AKData$District)
+tableDem <- as.data.frame(tableDem)
+colnames(tableDem) <- c("votes", "District")
+
+length(unique(AKDataContested$District))
+
+test <- tableDem %>% group_by(District) %>% dplyr::summarise(votes=sum(votes))
+
+```
+
+##Build table of house district estimates
+
+```{r}
+model.1 <- lm(D.Dist.Vote ~ D.Pres.Vote + R.Pres.Vote + sumTOTALPOP + sumBLACK + sumWHITE + sumHISPANIC +IncumD_VEP + IncumR_VEP + County, data = rdataContest)
+
+```
