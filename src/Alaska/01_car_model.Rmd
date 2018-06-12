@@ -30,6 +30,7 @@ library(gridExtra)
 library(xtable)
 library(stringi)
 require(rgdal)
+library(ngspatial)
 
 ```
 
@@ -196,7 +197,7 @@ no_nb <- which(rowSums(W_mat_con) == 0)
 nonb_W <- W_mat_con[-no_nb, -no_nb]
 nonb_shp <- con_shp[-no_nb,]
 
-nonb_Wnb <- poly2nb(nonb_shp, row.names = rownames(t2@data))
+nonb_Wnb <- poly2nb(nonb_shp, row.names = rownames(nonb_shp@data))
 ```
 
 
@@ -205,11 +206,11 @@ Now, we will fit both the Leroux and the BYM model.
 ##############
 #Leroux Model
 ##############
-d.model.ler <- S.CARleroux(formula=d.form, data=no_dem@data,
-                             family="poisson", W=W_mat_nod, burnin=20000, n.sample=120000, thin=10)
+#d.model.ler <- S.CARleroux(formula=d.form, data=no_dem@data,
+#                             family="poisson", W=W_mat_nod, burnin=20000, n.sample=120000, thin=10)
 
-r.model.ler <- S.CARleroux(formula=r.form, data=no_rep@data,
-                             family="poisson", W=W_mat_nor, burnin=20000, n.sample=120000, thin=10)
+#r.model.ler <- S.CARleroux(formula=r.form, data=no_rep@data,
+#                             family="poisson", W=W_mat_nor, burnin=20000, n.sample=120000, thin=10)
 
 
 c.d.model.ler <- S.CARleroux(formula=d.form, data=nonb_shp@data,
@@ -221,11 +222,11 @@ c.r.model.ler <- S.CARleroux(formula=r.form, data=nonb_shp@data,
 ##############
 # BYM Model
 ##############
-d.model.bym <- S.CARbym(formula=d.form, data=no_dem@data,
-                          family="poisson", W=W_mat_nod, burnin=20000, n.sample=120000, thin=10)
+#d.model.bym <- S.CARbym(formula=d.form, data=no_dem@data,
+#                          family="poisson", W=W_mat_nod, burnin=20000, n.sample=120000, thin=10)
 
-r.model.bym <- S.CARbym(formula=r.form, data=no_rep@data,
-                          family="poisson", W=W_mat_nor, burnin=20000, n.sample=120000, thin=10)
+#r.model.bym <- S.CARbym(formula=r.form, data=no_rep@data,
+#                          family="poisson", W=W_mat_nor, burnin=20000, n.sample=120000, thin=10)
 
 c.d.model.bym <- S.CARbym(formula=d.form, data=nonb_shp@data,
                              family="poisson", W=nonb_W, burnin=20000, n.sample=120000, thin=10)
@@ -235,19 +236,19 @@ c.r.model.bym <- S.CARbym(formula=r.form, data=nonb_shp@data,
                              family="poisson", W=nonb_W, burnin=20000, n.sample=120000, thin=10)
 
 #save the models for later reference, takes over an hour to run
-save(d.model.ler, r.model.ler, d.model.bym, r.model.bym, file = "C:/Users/ckell/Dropbox/Gerrycamp Regressions Project/Alaska Project/prelim_fit/precinct_shape.Rdata")
+save(c.d.model.ler, c.r.model.ler, c.d.model.bym, c.r.model.bym, file = "C:/Users/ckell/Dropbox/Gerrycamp Regressions Project/Alaska Project/prelim_fit/prelim_mod_fit.Rdata")
 
 ##############
 # Model Evaluation
 ##############
 #  dem ler
-d.model.ler$modelfit
+#d.model.ler$modelfit
 #  rep ler
-d.model.ler$modelfit
+#d.model.ler$modelfit
 #  dem bym
-r.model.bym$modelfit
+#r.model.bym$modelfit
 #  rep bym
-r.model.bym$modelfit
+#r.model.bym$modelfit
 
 #Only using contested precincts:
 #  dem ler
@@ -262,11 +263,11 @@ c.r.model.bym$modelfit
 
 Now, I will also include a model that accounts for spatial autocorrelation.
 ```{r}
-d.sp.sglmm.fit <- sparse.sglmm(formula = d.form,data=no_dem@data, family = poisson, A = W_mat_nod,
-                             verbose = TRUE) #tune = list(sigma.s = 0.02)
+#d.sp.sglmm.fit <- sparse.sglmm(formula = d.form,data=no_dem@data, family = poisson, A = W_mat_nod,
+#                             verbose = TRUE) #tune = list(sigma.s = 0.02)
 
-r.sp.sglmm.fit <- sparse.sglmm(formula = r.form,data=no_rep@data, family = poisson, A = W_mat_nor,
-                             verbose = TRUE) #tune = list(sigma.s = 0.02)
+#r.sp.sglmm.fit <- sparse.sglmm(formula = r.form,data=no_rep@data, family = poisson, A = W_mat_nor,
+#                             verbose = TRUE) #tune = list(sigma.s = 0.02)
 
 
 c.d.sp.sglmm.fit <- sparse.sglmm(formula = d.form,data=nonb_shp@data, family = poisson, A = nonb_W,
@@ -276,11 +277,11 @@ c.r.sp.sglmm.fit <- sparse.sglmm(formula = r.form,data=nonb_shp@data, family = p
                              verbose = TRUE) #tune = list(sigma.s = 0.02)
 
 #summary(sp.sglmm.fit)
-d.sp.sglmm.fit$dic
-d.sp.sglmm.fit$pD
+#d.sp.sglmm.fit$dic
+#d.sp.sglmm.fit$pD
 
-r.sp.sglmm.fit$dic
-r.sp.sglmm.fit$pD
+#r.sp.sglmm.fit$dic
+#r.sp.sglmm.fit$pD
 
 c.d.sp.sglmm.fit$dic
 c.d.sp.sglmm.fit$pD
@@ -318,27 +319,33 @@ Now, I will compute the MSPE for each model.
 ```{r}
 #### Democratic Prediction:
 #linear model
-mean((c.d.resid.model)^2)
+d.lm.mspe <- mean((c.d.resid.model)^2)
 #glm
-mean((c.d.resid.glm)^2)
+d.glm.mspe <- mean((c.d.resid.glm)^2)
 #bym
-mean((d.pred.bym-d.actual)^2)
+d.bym.mspe <- mean((d.pred.bym-d.actual)^2)
 #leroux
-mean((d.pred.ler-d.actual)^2)
+d.ler.mspe <- mean((d.pred.ler-d.actual)^2)
 
 #### Republican Prediction:
 #linear model
-mean((c.r.resid.model)^2)
+r.lm.mspe <- mean((c.r.resid.model)^2)
 #glm
-mean((c.r.resid.glm)^2)
+r.glm.mspe <- mean((c.r.resid.glm)^2)
 #bym
-mean((r.pred.bym-r.actual)^2)
+r.bym.mspe <- mean((r.pred.bym-r.actual)^2)
 #leroux
-mean((r.pred.ler-r.actual)^2)
+r.ler.mspe <- mean((r.pred.ler-r.actual)^2)
 
+mspe_tab <- rbind(c(d.lm.mspe, d.glm.mspe, d.bym.mspe, d.ler.mspe),
+                  c(r.lm.mspe, r.glm.mspe, r.bym.mspe, r.ler.mspe))
+colnames(mspe_tab) <- c("lin", "glm", "bym", "leroux")
+row
 
 ```
 
 
-need to use just contested elections
-Need to also incorporate incumbency
+To Do: 
+* need to also incorporate incumbency
+* cross validation statistics?
+* try including and not 
