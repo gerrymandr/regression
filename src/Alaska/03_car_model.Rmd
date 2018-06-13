@@ -31,6 +31,7 @@ library(xtable)
 library(stringi)
 require(rgdal)
 library(ngspatial)
+library(plyr)
 
 ```
 
@@ -42,7 +43,7 @@ Now, we will load the data, including the following:
 #precinct shape files, showing some precincts to the right of the main figure
 prec_shp <- readOGR(dsn = "C:/Users/ckell/Dropbox/Gerrycamp Regressions Project/Alaska Project/data/2013-SW-Precinct-Proc-Plan", layer = "2013-SW-Proc-Shape-files")
 
-#dist_shp <- readOGR(dsn = "C:/Users/ckell/Dropbox/Gerrycamp Regressions Project/Alaska Project/data/2013-HD-ProclamationPlan", layer = "2013ProclamationPlan")
+dist_shp <- readOGR(dsn = "C:/Users/ckell/Dropbox/Gerrycamp Regressions Project/Alaska Project/data/2013-HD-ProclamationPlan", layer = "2013ProclamationPlan")
 
 #voting and demographic data
 demog_vote <- read.csv("C:/Users/ckell/Dropbox/Gerrycamp Regressions Project/Alaska Project/AKDataByPrecinct.csv")
@@ -283,9 +284,7 @@ c.r.sp.sglmm.fit <- sparse.sglmm(formula = r.form,data=nonb_shp@data, family = p
 
 #save the models for later reference, takes over an hour to run
 save(c.d.model.ler, c.r.model.ler, c.d.model.bym, c.r.model.bym, 
-     #c.d.sp.sglmm.fit, c.r.sp.sglmm.fit, 
-     file = "C:/Users/ckell/Dropbox/Gerrycamp Regressions Project/
-     Alaska Project/prelim_fit/prelim_mod_fit.Rdata")
+     file = "C:/Users/ckell/Dropbox/Gerrycamp Regressions Project/Alaska Project/prelim_fit/prelim_mod_fit2.Rdata")
 
 #summary(sp.sglmm.fit)
 #d.sp.sglmm.fit$dic
@@ -325,12 +324,12 @@ r.pred.ler <- c.r.model.ler$fitted.values
 
 #d.pred.sglmm <- c.d.sp.sglmm.fit$fitted.values
 #r.pred.sglmm <- c.r.sp.sglmm.fit$fitted.values
+test <- cbind(d.pred.ler, actual.d)
 
-
-actual_tab <- cbind(nonb_shp@data$District, actual.d, actual.r)
-actual_tab <- as.data.frame(actual_tab)
-colnames(actual_tab) <- c("District", "actual_d", "actual_r")
-test <- actual_tab %>% group_by(District) %>% dplyr::summarise(dem_votes=sum(actual_d))
+#actual_tab <- cbind(nonb_shp@data$District, actual.d, actual.r)
+#actual_tab <- as.data.frame(actual_tab)
+#colnames(actual_tab) <- c("District", "actual_d", "actual_r")
+#test <- actual_tab %>% group_by(District) %>% dplyr::summarise(dem_votes=sum(actual_d))
 
 ```
 
@@ -423,6 +422,7 @@ pred_val <- function(coeffs.Dem, coeffs.Rep, mod_dat){
   v_table <- left_join(v_table_d, v_table_r)
   
   colnames(v_table) <- c("District", "Dem. Votes", "Rep. Votes")
+  v_table2 <- v_table
   return(v_table)
 }
 
@@ -437,7 +437,7 @@ coeffs.Rep <-summary(c.r.model)$coefficients[,1]
 coeffs.Dem <- as.numeric(coeffs.Dem)
 coeffs.Rep <- as.numeric(coeffs.Rep)
 
-v_table_lm <- pred_val(coeffs.Dem, coeffs.Rep)
+v_table_lm <- pred_val(coeffs.Dem, coeffs.Rep, mod_dat)
 
 ######
 #GLM:
@@ -446,10 +446,10 @@ v_table_lm <- pred_val(coeffs.Dem, coeffs.Rep)
 coeffs.Dem <-summary(c.d.glm_model)$coefficients[,1]
 coeffs.Rep <-summary(c.r.glm_model)$coefficients[,1]
 
-coeffs.Dem <- as.numeric(coeffs.Dem)
-coeffs.Rep <- as.numeric(coeffs.Rep)
+coeffs.Dem2 <- as.numeric(coeffs.Dem)
+coeffs.Rep2 <- as.numeric(coeffs.Rep)
 
-v_table_glm <- pred_val(coeffs.Dem, coeffs.Rep)
+v_table_glm <- pred_val(coeffs.Dem, coeffs.Rep, mod_dat)
 
 length(which(v_table_glm[,2] > v_table_glm[,3])) #still only predicts 3
 
@@ -464,7 +464,8 @@ coeffs.Rep <- c.r.model.bym$summary.results[1:9,1]
 coeffs.Dem <- as.numeric(coeffs.Dem)
 coeffs.Rep <- as.numeric(coeffs.Rep)
 
-v_table_bym <- pred_val(coeffs.Dem, coeffs.Rep)
+v_table_bym <- pred_val(coeffs.Dem, coeffs.Rep, mod_dat)
+length(which(v_table_bym[,2] > v_table_bym[,3])) #still only predicts 3
 
 ######
 #Leroux:
@@ -476,7 +477,8 @@ coeffs.Rep <- c.r.model.ler$summary.results[1:9,1]
 coeffs.Dem <- as.numeric(coeffs.Dem)
 coeffs.Rep <- as.numeric(coeffs.Rep)
 
-v_table_ler <- pred_val(coeffs.Dem, coeffs.Rep)
+v_table_ler <- pred_val(coeffs.Dem, coeffs.Rep, mod_dat)
+length(which(v_table_ler[,2] > v_table_ler[,3])) #still only predicts 2
 
 ######
 #SGLMM:
@@ -508,14 +510,8 @@ r_mod_dat <- con_shp@data[,c("R.Dist.Vote", "D.Pres.Vote", "R.Pres.Vote", "sumTO
 
 
 mod_mat <- model.matrix( ~ County - 1, data=con_shp@data )
-#d_mod_dat$int <- rep(1, nrow(d_mod_dat))
-#d_mod_dat <- cbind(d_mod_dat[,1], d_mod_dat[,10], d_mod_dat[,2:9])#, mod_mat)
 d_mod_dat <- cbind(d_mod_dat, mod_mat)
-#colnames(d_mod_dat)[1:2]<- c("D.Dist.Vote", "int")
-#r_mod_dat$int <- rep(1, nrow(r_mod_dat))
-#r_mod_dat <- cbind(r_mod_dat[,1], r_mod_dat[,10], r_mod_dat[,2:9])#, mod_dat)
 r_mod_dat <- cbind(r_mod_dat, mod_mat)
-#colnames(r_mod_dat)[1:2]<- c("R.Dist.Vote", "int")
 mod_mat2 <- model.matrix( ~ County - 1, data=demog_vote)
 mod_dat$int <- rep(1, nrow(mod_dat))
 mod_dat <- cbind(mod_dat[,9], mod_dat[,1:8], mod_mat2)
@@ -537,16 +533,6 @@ c.d.resid.glm <- con_shp@data$D.Dist.Vote - c.d.glm_model$fitted.values
 c.r.glm_model <- glm(formula=r.form, family = "poisson", data=r_mod_dat)
 c.r.resid.glm <- con_shp@data$R.Dist.Vote - c.r.glm_model$fitted.values
 
-test2 <- resid(c.d.glm_model) 
-
-#test2 <- c.d.glm_model$residuals
-test2 <- as.data.frame(test2)
-test3 <- c.d.glm_model$fitted.values
-actual_d <- d_mod_dat$D.Dist.Vote
-full_dat <- cbind(actual_d, test3, test2)
-full_dat$resid <- full_dat[,1]-full_dat[,2]
-?residuals
-
 ######
 #Linear Model:
 ######
@@ -558,13 +544,11 @@ test <- test[,-32] #also taking out CountyYukon-Koyukuk Census Area`
 coeffs.Dem <-summary(c.d.model)$coefficients[,1]
 coeffs.Rep <-summary(c.r.model)$coefficients[,1]
 
-#sum(test[,32])
-#colnames(test)[32]
-
 coeffs.Dem <- as.numeric(coeffs.Dem)
 coeffs.Rep <- as.numeric(coeffs.Rep)
 
-v_table_lm <- pred_val(coeffs.Dem, coeffs.Rep, test)
+co_v_table_lm <- pred_val(coeffs.Dem, coeffs.Rep, test)
+length(which(co_v_table_lm[,2] > co_v_table_lm[,3])) #still only predicts 4
 
 ######
 #GLM:
@@ -576,16 +560,83 @@ coeffs.Rep <-summary(c.r.glm_model)$coefficients[,1]
 coeffs.Dem <- as.numeric(coeffs.Dem)
 coeffs.Rep <- as.numeric(coeffs.Rep)
 
-v_table_glm <- pred_val(coeffs.Dem, coeffs.Rep, test)
+co_v_table_glm <- pred_val(coeffs.Dem, coeffs.Rep, test)
 
-length(which(v_table_glm[,2] > v_table_glm[,3])) #still only predicts 4
+length(which(co_v_table_glm[,2] > co_v_table_glm[,3])) #still only predicts 4
 
 
 #linear model
-d.lm.mspe <- mean((c.d.resid.model)^2)
+co.d.lm.mspe <- mean((c.d.resid.model)^2)
+co.r.lm.mspe <- mean((c.r.resid.model)^2)
 #glm
-d.glm.mspe <- mean((c.d.resid.glm)^2)
-r.glm.mspe <- mean((c.r.resid.glm)^2)
+co.d.glm.mspe <- mean((c.d.resid.glm)^2)
+co.r.glm.mspe <- mean((c.r.resid.glm)^2)
+
+mspe_tab <- rbind(c(d.lm.mspe, d.glm.mspe, d.bym.mspe, d.ler.mspe, co.d.lm.mspe, co.d.glm.mspe),#, d.sglmm.mspe),
+                  c(r.lm.mspe, r.glm.mspe, r.bym.mspe, r.ler.mspe, co.r.lm.mspe, co.r.glm.mspe))#, r.sglmm.mspe))
+#mspe_tab_count <- mspe_tab
+colnames(mspe_tab) <- c("lin", "glm", "bym", "leroux", "county lm", "county glm")#, "sglmm")
+rownames(mspe_tab) <- c("Democrat", "Republican")
+View(mspe_tab)
+
+write.csv(co_v_table_lm, file = 'C:/Users/ckell/Dropbox/Gerrycamp Regressions Project/Alaska Project/data/mod_fit/co_lin_mod.csv')
+write.csv(co_v_table_glm, file = 'C:/Users/ckell/Dropbox/Gerrycamp Regressions Project/Alaska Project/data/mod_fit/co_glm.csv')
+```
+
+Create heatmap based off of the % demographic
+```{r}
+heat_dat <- read.csv("C:/Users/ckell/Dropbox/Gerrycamp Regressions Project/Alaska Project/AKDataByPrecinct(1).csv")
+
+heat_dat <- heat_dat[-nrow(heat_dat),] #last row is NA
+
+#change column name for ID variables for which we will join
+colnames(heat_dat)[1] <- "GEOID"
+colnames(prec_shp@data)[3] <- "GEOID"
+
+#change to character variable
+heat_dat$GEOID <- as.character(heat_dat$GEOID)
+prec_shp@data$GEOID <- as.character(prec_shp@data$GEOID)
+
+prec_shp@data$id <- rownames(prec_shp@data)
+prec_shp@data <- left_join(prec_shp@data, heat_dat, by = (GEOID = "GEOID"))
+
+P4S.latlon <- CRS("+proj=longlat +datum=WGS84")
+
+dist_shp <- spTransform(dist_shp, CRS("+init=epsg:3338"))
+prec_shp <- spTransform(prec_shp, CRS("+init=epsg:3338"))
+
+heat_map <- function(heat_dat){
+  #prec_shp@data   <- join(prec_shp@data, data, by="CD_GEOCODI")
+  sp_f     <- fortify(prec_shp)
+  sp_f     <- join(sp_f,prec_shp@data, by="id")
+  sp_f$Percent_DVote <- as.numeric(as.character(sp_f$Percent_DVote))
+  sp_f <- sp_f[which(sp_f$long < 1e10),]
+  
+  dist_shp_f <- fortify(dist_shp)
+  
+  fit_by_prec <- ggplot()+ 
+    #geom_polygon(data=dist_shp,aes(long,lat, group = group), fill = NA, col = "red") + 
+    geom_polygon(data = sp_f, aes(long, lat, group = group, fill = Percent_DVote)) + 
+    coord_equal() +
+    labs(fill = "Percent Dem Vote")+ 
+    geom_polygon(data=dist_shp_f,aes(long,lat, group = group), fill = NA, col = "red") +
+    ggtitle("Percentage of Dem Vote by Precinct")+ scale_fill_gradient2(midpoint = 0.5,low = "red", high = "navyblue")
+  #+theme(text = element_text(size=30))+theme(axis.text.x=element_text(size=20))
+
+  return(fit_by_prec)
+}
+
+
+
+prop_by_prec <- ggplot()+ 
+  #geom_polygon(data=dist_shp,aes(long,lat, group = group), fill = NA, col = "red") + 
+  geom_polygon(data = sp_f, aes(long, lat, group = group, fill = (Reg..D.Voters-Reg..R.Voters)/Reg..Voters)) + 
+  coord_equal() +
+  labs(fill = "Reg Dem - Reg Rep / Total Reg")+ 
+  geom_polygon(data=dist_shp_f,aes(long,lat, group = group), fill = NA, col = "red") +
+  ggtitle("Reg Dem - Reg Rep / Total Reg by Precinct")+
+  scale_fill_gradient(low = "lightblue", high = "navyblue")
+
 ```
 
 
@@ -596,3 +647,4 @@ To Do:
 * hypotheticaly if there were no incumbents, fit the model on precincts and then aggregate to the house district level, and see who would win
 ** in other words, we want two columns (repub votes and dem votes) for each of the 40 districts - do a group_by
 * Histogram EG and # D Seats
+*Also mark boundary lines of districts
