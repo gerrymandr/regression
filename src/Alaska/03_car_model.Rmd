@@ -78,6 +78,10 @@ colnames(prec_shp@data)[3] <- "GEOID"
 demog_vote$GEOID <- as.character(demog_vote$GEOID)
 prec_shp@data$GEOID <- as.character(prec_shp@data$GEOID)
 
+#creating new variable
+demog_vote$IncumD_Pop <- demog_vote$Incumbent.D*demog_vote$sumTOTALPOP
+demog_vote$IncumR_Pop <- demog_vote$Incumbent.R*demog_vote$sumTOTALPOP
+
 #join on GEOID
 prec_shp@data <- left_join(prec_shp@data, demog_vote, by = (GEOID = "GEOID"))
 
@@ -111,12 +115,12 @@ unc <- unique(c(which(is.na(prec_shp$D.Dist.Vote)), which(is.na(prec_shp$R.Dist.
 con_shp <- prec_shp[-unc,]
 
 #non-spatial modeling
-d.form <- D.Dist.Vote ~ D.Pres.Vote + R.Pres.Vote+sumTOTALPOP +sumBLACK + sumHISPANIC
-r.form <- R.Dist.Vote ~ D.Pres.Vote + R.Pres.Vote+sumTOTALPOP +sumBLACK + sumHISPANIC
-d.model <- lm(formula=d.form, data=prec_shp@data)
-d.resid.model <- residuals(d.model)
-r.model <- lm(formula=r.form, data=prec_shp@data)
-r.resid.model <- residuals(r.model)
+d.form <- D.Dist.Vote ~ D.Pres.Vote + R.Pres.Vote+sumTOTALPOP +sumBLACK + sumWHITE + sumHISPANIC+ IncumD_Pop + IncumR_Pop
+r.form <- R.Dist.Vote ~ D.Pres.Vote + R.Pres.Vote+sumTOTALPOP +sumBLACK + sumWHITE + sumHISPANIC+ IncumD_Pop + IncumR_Pop
+#d.model <- lm(formula=d.form, data=prec_shp@data)
+#d.resid.model <- residuals(d.model)
+#r.model <- lm(formula=r.form, data=prec_shp@data)
+#r.resid.model <- residuals(r.model)
 
 c.d.model <- lm(formula=d.form, data=con_shp@data)
 c.d.resid.model <- residuals(c.d.model)
@@ -126,10 +130,10 @@ c.r.resid.model <- residuals(c.r.model)
 
 
 #glm model
-d.glm_model <- glm(formula=d.form, family = "poisson", data=prec_shp@data)
-d.resid.glm <- residuals(d.glm_model)
-r.glm_model <- glm(formula=r.form, family = "poisson", data=prec_shp@data)
-r.resid.glm <- residuals(r.glm_model)
+#d.glm_model <- glm(formula=d.form, family = "poisson", data=prec_shp@data)
+#d.resid.glm <- residuals(d.glm_model)
+#r.glm_model <- glm(formula=r.form, family = "poisson", data=prec_shp@data)
+#r.resid.glm <- residuals(r.glm_model)
 
 c.d.glm_model <- glm(formula=d.form, family = "poisson", data=con_shp@data)
 c.d.resid.glm <- residuals(c.d.glm_model)
@@ -138,8 +142,8 @@ c.r.resid.glm <- residuals(c.r.glm_model)
 
 
 #need to remove shape file objects with no D.Dist.Vote
-no_dem <- prec_shp[-which(is.na(prec_shp$D.Dist.Vote)),]
-no_rep <- prec_shp[-which(is.na(prec_shp$R.Dist.Vote)),]
+#no_dem <- prec_shp[-which(is.na(prec_shp$D.Dist.Vote)),]
+#no_rep <- prec_shp[-which(is.na(prec_shp$R.Dist.Vote)),]
 
 
 #test for spatial dependence
@@ -147,13 +151,13 @@ no_rep <- prec_shp[-which(is.na(prec_shp$R.Dist.Vote)),]
 #also computes Moran's I statistic 
 #if p-value < 0.05, we conclude there is positve spatial autocorrelation
 #W.nb <- poly2nb(prec_shp, row.names = rownames(prec_shp@data))
-W.nb.nod <- poly2nb(no_dem, row.names = rownames(no_dem@data))
-W.nb.nor <- poly2nb(no_rep, row.names = rownames(no_rep@data))
+#W.nb.nod <- poly2nb(no_dem, row.names = rownames(no_dem@data))
+#W.nb.nor <- poly2nb(no_rep, row.names = rownames(no_rep@data))
 W.nb.con <- poly2nb(con_shp, row.names = rownames(con_shp@data))
 
-coords <- coordinates(prec_shp)
-plot(prec_shp)
-plot(W.nb, coords, pch = 1, cex = 0.6, add = TRUE)
+#coords <- coordinates(prec_shp)
+#plot(prec_shp)
+#plot(W.nb, coords, pch = 1, cex = 0.6, add = TRUE)
 
 #remove empty neighbor sets
 
@@ -162,8 +166,8 @@ plot(W.nb, coords, pch = 1, cex = 0.6, add = TRUE)
 ##############
 #W_mat <- nb2mat(W.nb, style="B", zero.policy=TRUE) #includes some islands
 #View(head(W_mat))
-W_mat_nod <- nb2mat(W.nb.nod, style="B", zero.policy=TRUE)
-W_mat_nor <- nb2mat(W.nb.nor, style="B", zero.policy=TRUE)
+#W_mat_nod <- nb2mat(W.nb.nod, style="B", zero.policy=TRUE)
+#W_mat_nor <- nb2mat(W.nb.nor, style="B", zero.policy=TRUE)
 W_mat_con <- nb2mat(W.nb.con, style="B", zero.policy=TRUE)
 
 
@@ -173,13 +177,13 @@ W_mat_con <- nb2mat(W.nb.con, style="B", zero.policy=TRUE)
 
 #addition
 #W.list <- nb2listw(W.nb, style="B", zero.policy = TRUE)
-W.list.nod <- nb2listw(W.nb.nod, style="B", zero.policy = TRUE)
-W.list.nor <- nb2listw(W.nb.nor, style="B", zero.policy = TRUE)
+#W.list.nod <- nb2listw(W.nb.nod, style="B", zero.policy = TRUE)
+#W.list.nor <- nb2listw(W.nb.nor, style="B", zero.policy = TRUE)
 W.list.con <- nb2listw(W.nb.con, style="B", zero.policy = TRUE)
 
 #moran.mc(x=resid.glm, listw=W.list, nsim=1000, zero.policy = FALSE)
-moran.mc(x=d.resid.glm, listw=W.list.nod, nsim=1000, zero.policy = TRUE)
-moran.mc(x=r.resid.glm, listw=W.list.nor, nsim=1000, zero.policy = TRUE)
+#moran.mc(x=d.resid.glm, listw=W.list.nod, nsim=1000, zero.policy = TRUE)
+#moran.mc(x=r.resid.glm, listw=W.list.nor, nsim=1000, zero.policy = TRUE)
 
 moran.mc(x=c.d.resid.glm, listw=W.list.con, nsim=1000, zero.policy = TRUE)
 moran.mc(x=c.r.resid.glm, listw=W.list.con, nsim=1000, zero.policy = TRUE)
@@ -235,9 +239,6 @@ c.d.model.bym <- S.CARbym(formula=d.form, data=nonb_shp@data,
 c.r.model.bym <- S.CARbym(formula=r.form, data=nonb_shp@data,
                              family="poisson", W=nonb_W, burnin=20000, n.sample=120000, thin=10)
 
-#save the models for later reference, takes over an hour to run
-save(c.d.model.ler, c.r.model.ler, c.d.model.bym, c.r.model.bym, file = "C:/Users/ckell/Dropbox/Gerrycamp Regressions Project/Alaska Project/prelim_fit/prelim_mod_fit.Rdata")
-
 ##############
 # Model Evaluation
 ##############
@@ -254,9 +255,9 @@ save(c.d.model.ler, c.r.model.ler, c.d.model.bym, c.r.model.bym, file = "C:/User
 #  dem ler
 c.d.model.ler$modelfit
 #  rep ler
-c.d.model.ler$modelfit
+c.r.model.ler$modelfit
 #  dem bym
-c.r.model.bym$modelfit
+c.d.model.bym$modelfit
 #  rep bym
 c.r.model.bym$modelfit
 ```
@@ -269,12 +270,19 @@ Now, I will also include a model that accounts for spatial autocorrelation.
 #r.sp.sglmm.fit <- sparse.sglmm(formula = r.form,data=no_rep@data, family = poisson, A = W_mat_nor,
 #                             verbose = TRUE) #tune = list(sigma.s = 0.02)
 
+rownames(nonb_W) <- NULL
+c.d.sp.sglmm.fit <- sparse.sglmm(formula = d.form,data=nonb_shp@data, family = poisson, 
+                                 A = nonb_W, verbose = TRUE) #tune = list(sigma.s = 0.02)
 
-c.d.sp.sglmm.fit <- sparse.sglmm(formula = d.form,data=nonb_shp@data, family = poisson, A = nonb_W,
-                             verbose = TRUE) #tune = list(sigma.s = 0.02)
 
-c.r.sp.sglmm.fit <- sparse.sglmm(formula = r.form,data=nonb_shp@data, family = poisson, A = nonb_W,
-                             verbose = TRUE) #tune = list(sigma.s = 0.02)
+c.r.sp.sglmm.fit <- sparse.sglmm(formula = r.form,data=nonb_shp@data, family = poisson, 
+                                 A = nonb_W, verbose = TRUE) #tune = list(sigma.s = 0.02)
+
+#save the models for later reference, takes over an hour to run
+save(c.d.model.ler, c.r.model.ler, c.d.model.bym, 
+     c.r.model.bym, c.d.sp.sglmm.fit, c.r.sp.sglmm.fit, 
+     file = "C:/Users/ckell/Dropbox/Gerrycamp Regressions Project/
+     Alaska Project/prelim_fit/prelim_mod_fit.Rdata")
 
 #summary(sp.sglmm.fit)
 #d.sp.sglmm.fit$dic
@@ -295,7 +303,7 @@ Now, we need to compare coefficients to see if there was any spatial autocorrela
 ```{r}
 model.bym$summary.results[,1:3]
 
-summary(sp.sglmm.fit)
+summary(c.d.sp.sglmm.fit)
 ```
 
 #Model Evaluation
@@ -312,8 +320,10 @@ r.pred.bym <- c.r.model.bym$fitted.values
 d.pred.ler <- c.d.model.ler$fitted.values
 r.pred.ler <- c.r.model.ler$fitted.values
 
-```
+d.pred.sglmm <- c.d.sp.sglmm.fit$fitted.values
+r.pred.sglmm <- c.r.sp.sglmm.fit$fitted.values
 
+```
 
 Now, I will compute the MSPE for each model.
 ```{r}
@@ -326,6 +336,8 @@ d.glm.mspe <- mean((c.d.resid.glm)^2)
 d.bym.mspe <- mean((d.pred.bym-d.actual)^2)
 #leroux
 d.ler.mspe <- mean((d.pred.ler-d.actual)^2)
+#sglmm
+d.sglmm.mspe <- mean((d.pred.sglmm - d.actual)^2)
 
 #### Republican Prediction:
 #linear model
@@ -336,16 +348,148 @@ r.glm.mspe <- mean((c.r.resid.glm)^2)
 r.bym.mspe <- mean((r.pred.bym-r.actual)^2)
 #leroux
 r.ler.mspe <- mean((r.pred.ler-r.actual)^2)
+#sglmm
+r.sglmm.mspe <- mean((r.pred.sglmm - r.actual)^2)
 
-mspe_tab <- rbind(c(d.lm.mspe, d.glm.mspe, d.bym.mspe, d.ler.mspe),
-                  c(r.lm.mspe, r.glm.mspe, r.bym.mspe, r.ler.mspe))
-colnames(mspe_tab) <- c("lin", "glm", "bym", "leroux")
-row
+mspe_tab <- rbind(c(d.lm.mspe, d.glm.mspe, d.bym.mspe, d.ler.mspe, d.sglmm.mspe),
+                  c(r.lm.mspe, r.glm.mspe, r.bym.mspe, r.ler.mspe, r.sglmm.mspe))
+colnames(mspe_tab) <- c("lin", "glm", "bym", "leroux", "sglmm")
+rownames(mspe_tab) <- c("Democrat", "Republican")
 
 ```
+
+
+Bayesian Model Comparison Techniques:
+```{r}
+# dem ler
+c.d.model.ler$modelfit
+#  rep ler
+c.r.model.ler$modelfit
+#  dem bym
+c.d.model.bym$modelfit
+#  rep bym
+c.r.model.bym$modelfit
+
+c.d.sp.sglmm.fit$dic
+c.d.sp.sglmm.fit$pD
+
+c.r.sp.sglmm.fit$dic
+c.r.sp.sglmm.fit$pD
+```
+
+
+Creation of counterfactual scenario where there is no incumbent:
+```{r}
+#First, I will create the model dataframe
+mod_dat <- demog_vote[,c("D.Pres.Vote", "R.Pres.Vote", "sumTOTALPOP", "sumBLACK", "sumWHITE", "sumHISPANIC", "IncumD_Pop", "IncumR_Pop")]
+mod_dat$int <- rep(1, nrow(mod_dat))
+mod_dat <- cbind(mod_dat[,9], mod_dat[,1:8])
+
+
+#create function that returns predicted values under counterfactual situation
+pred_val <- function(coeffs.Dem, coeffs.Rep){
+  coeffs.Dem[8] <- 0
+  coeffs.Dem[9] <- 0
+  coeffs.Rep[8] <- 0
+  coeffs.Rep[9] <- 0
+  
+  tableDem <- as.matrix(mod_dat)%*%coeffs.Dem
+  tableDem <- as.numeric(tableDem)
+  tableDem <- cbind(tableDem, demog_vote$District)
+  tableDem <- as.data.frame(tableDem)
+  colnames(tableDem) <- c("votes", "District")
+  
+  length(unique(tableDem$District))
+  
+  v_table_d <- tableDem %>% group_by(District) %>% dplyr::summarise(dem_votes=sum(votes))
+  
+  tableRep <- as.matrix(mod_dat)%*%coeffs.Rep
+  tableRep <- as.numeric(tableRep)
+  tableRep <- cbind(tableRep, demog_vote$District)
+  tableRep <- as.data.frame(tableRep)
+  colnames(tableRep) <- c("votes", "District")
+  
+  v_table_r <- tableRep %>% group_by(District) %>% dplyr::summarise(rep_votes=sum(votes))
+  
+  v_table <- left_join(v_table_d, v_table_r)
+  
+  colnames(v_table) <- c("District", "Dem. Votes", "Rep. Votes")
+  return(v_table)
+}
+
+
+######
+#Linear Model:
+######
+
+coeffs.Dem <-summary(c.d.model)$coefficients[,1]
+coeffs.Rep <-summary(c.r.model)$coefficients[,1]
+
+coeffs.Dem <- as.numeric(coeffs.Dem)
+coeffs.Rep <- as.numeric(coeffs.Rep)
+
+v_table_lm <- pred_val(coeffs.Dem, coeffs.Rep)
+
+######
+#GLM:
+######
+
+coeffs.Dem <-summary(c.d.glm_model)$coefficients[,1]
+coeffs.Rep <-summary(c.r.glm_model)$coefficients[,1]
+
+coeffs.Dem <- as.numeric(coeffs.Dem)
+coeffs.Rep <- as.numeric(coeffs.Rep)
+
+v_table_glm <- pred_val(coeffs.Dem, coeffs.Rep)
+
+######
+#BYM:
+######
+
+coeffs.Dem <- c.d.model.bym$summary.results[1:9,1]
+coeffs.Rep <- c.r.model.bym$summary.results[1:9,1]
+
+coeffs.Dem <- as.numeric(coeffs.Dem)
+coeffs.Rep <- as.numeric(coeffs.Rep)
+
+v_table_bym <- pred_val(coeffs.Dem, coeffs.Rep)
+
+######
+#Leroux:
+######
+
+coeffs.Dem <- c.d.model.ler$summary.results[1:9,1]
+coeffs.Rep <- c.r.model.ler$summary.results[1:9,1]
+
+coeffs.Dem <- as.numeric(coeffs.Dem)
+coeffs.Rep <- as.numeric(coeffs.Rep)
+
+v_table_ler <- pred_val(coeffs.Dem, coeffs.Rep)
+
+######
+#SGLMM:
+######
+
+coeffs.Dem <- c.d.sp.sglmm.fit$coefficients
+coeffs.Rep <- c.r.sp.sglmm.fit$coefficients
+
+coeffs.Dem <- as.numeric(coeffs.Dem)
+coeffs.Rep <- as.numeric(coeffs.Rep)
+
+v_table_sglmm <- pred_val(coeffs.Dem, coeffs.Rep)
+
+write.csv(v_table_lm, file = 'C:/Users/ckell/Dropbox/Gerrycamp Regressions Project/Alaska Project/data/mod_fit/lin_mod.csv')
+write.csv(v_table_glm, file = 'C:/Users/ckell/Dropbox/Gerrycamp Regressions Project/Alaska Project/data/mod_fit/glm.csv')
+write.csv(v_table_bym, file = 'C:/Users/ckell/Dropbox/Gerrycamp Regressions Project/Alaska Project/data/mod_fit/bym.csv')
+write.csv(v_table_ler, file = 'C:/Users/ckell/Dropbox/Gerrycamp Regressions Project/Alaska Project/data/mod_fit/ler.csv')
+write.csv(v_table_sglmm, file = 'C:/Users/ckell/Dropbox/Gerrycamp Regressions Project/Alaska Project/data/mod_fit/sglmm.csv')```
+
 
 
 To Do: 
 * need to also incorporate incumbency
 * cross validation statistics?
-* try including and not 
+* try including and not the county indicator
+* hypotheticaly if there were no incumbents, fit the model on precincts and then aggregate to the house district level, and see who would win
+** in other words, we want two columns (repub votes and dem votes) for each of the 40 districts - do a group_by
+* Histogram EG and # D Seats
