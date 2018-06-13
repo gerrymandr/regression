@@ -274,13 +274,16 @@ rownames(nonb_W) <- NULL
 c.d.sp.sglmm.fit <- sparse.sglmm(formula = d.form,data=nonb_shp@data, family = poisson, 
                                  A = nonb_W, verbose = TRUE) #tune = list(sigma.s = 0.02)
 
+#25 min at 9:43, stuck at 44%, 23m 49s
 
 c.r.sp.sglmm.fit <- sparse.sglmm(formula = r.form,data=nonb_shp@data, family = poisson, 
                                  A = nonb_W, verbose = TRUE) #tune = list(sigma.s = 0.02)
+#11%, 32m 22s remaining at 9:56pm
+#55% ~19m 27s  
 
 #save the models for later reference, takes over an hour to run
-save(c.d.model.ler, c.r.model.ler, c.d.model.bym, 
-     c.r.model.bym, c.d.sp.sglmm.fit, c.r.sp.sglmm.fit, 
+save(c.d.model.ler, c.r.model.ler, c.d.model.bym, c.r.model.bym, 
+     #c.d.sp.sglmm.fit, c.r.sp.sglmm.fit, 
      file = "C:/Users/ckell/Dropbox/Gerrycamp Regressions Project/
      Alaska Project/prelim_fit/prelim_mod_fit.Rdata")
 
@@ -320,8 +323,8 @@ r.pred.bym <- c.r.model.bym$fitted.values
 d.pred.ler <- c.d.model.ler$fitted.values
 r.pred.ler <- c.r.model.ler$fitted.values
 
-d.pred.sglmm <- c.d.sp.sglmm.fit$fitted.values
-r.pred.sglmm <- c.r.sp.sglmm.fit$fitted.values
+#d.pred.sglmm <- c.d.sp.sglmm.fit$fitted.values
+#r.pred.sglmm <- c.r.sp.sglmm.fit$fitted.values
 
 ```
 
@@ -333,11 +336,11 @@ d.lm.mspe <- mean((c.d.resid.model)^2)
 #glm
 d.glm.mspe <- mean((c.d.resid.glm)^2)
 #bym
-d.bym.mspe <- mean((d.pred.bym-d.actual)^2)
+d.bym.mspe <- mean((d.pred.bym-actual.d)^2)
 #leroux
-d.ler.mspe <- mean((d.pred.ler-d.actual)^2)
+d.ler.mspe <- mean((d.pred.ler-actual.d)^2)
 #sglmm
-d.sglmm.mspe <- mean((d.pred.sglmm - d.actual)^2)
+#d.sglmm.mspe <- mean((d.pred.sglmm - actual.d)^2)
 
 #### Republican Prediction:
 #linear model
@@ -345,15 +348,15 @@ r.lm.mspe <- mean((c.r.resid.model)^2)
 #glm
 r.glm.mspe <- mean((c.r.resid.glm)^2)
 #bym
-r.bym.mspe <- mean((r.pred.bym-r.actual)^2)
+r.bym.mspe <- mean((r.pred.bym-actual.r)^2)
 #leroux
-r.ler.mspe <- mean((r.pred.ler-r.actual)^2)
+r.ler.mspe <- mean((r.pred.ler-actual.r)^2)
 #sglmm
-r.sglmm.mspe <- mean((r.pred.sglmm - r.actual)^2)
+#r.sglmm.mspe <- mean((r.pred.sglmm - actual.r)^2)
 
-mspe_tab <- rbind(c(d.lm.mspe, d.glm.mspe, d.bym.mspe, d.ler.mspe, d.sglmm.mspe),
-                  c(r.lm.mspe, r.glm.mspe, r.bym.mspe, r.ler.mspe, r.sglmm.mspe))
-colnames(mspe_tab) <- c("lin", "glm", "bym", "leroux", "sglmm")
+mspe_tab <- rbind(c(d.lm.mspe, d.glm.mspe, d.bym.mspe, d.ler.mspe),#, d.sglmm.mspe),
+                  c(r.lm.mspe, r.glm.mspe, r.bym.mspe, r.ler.mspe))#, r.sglmm.mspe))
+colnames(mspe_tab) <- c("lin", "glm", "bym", "leroux")#, "sglmm")
 rownames(mspe_tab) <- c("Democrat", "Republican")
 
 ```
@@ -370,11 +373,11 @@ c.d.model.bym$modelfit
 #  rep bym
 c.r.model.bym$modelfit
 
-c.d.sp.sglmm.fit$dic
-c.d.sp.sglmm.fit$pD
+#c.d.sp.sglmm.fit$dic
+#c.d.sp.sglmm.fit$pD
 
-c.r.sp.sglmm.fit$dic
-c.r.sp.sglmm.fit$pD
+#c.r.sp.sglmm.fit$dic
+#c.r.sp.sglmm.fit$pD
 ```
 
 
@@ -470,20 +473,20 @@ v_table_ler <- pred_val(coeffs.Dem, coeffs.Rep)
 #SGLMM:
 ######
 
-coeffs.Dem <- c.d.sp.sglmm.fit$coefficients
-coeffs.Rep <- c.r.sp.sglmm.fit$coefficients
-
-coeffs.Dem <- as.numeric(coeffs.Dem)
-coeffs.Rep <- as.numeric(coeffs.Rep)
-
-v_table_sglmm <- pred_val(coeffs.Dem, coeffs.Rep)
+# coeffs.Dem <- c.d.sp.sglmm.fit$coefficients
+# coeffs.Rep <- c.r.sp.sglmm.fit$coefficients
+# 
+# coeffs.Dem <- as.numeric(coeffs.Dem)
+# coeffs.Rep <- as.numeric(coeffs.Rep)
+# 
+# v_table_sglmm <- pred_val(coeffs.Dem, coeffs.Rep)
 
 write.csv(v_table_lm, file = 'C:/Users/ckell/Dropbox/Gerrycamp Regressions Project/Alaska Project/data/mod_fit/lin_mod.csv')
 write.csv(v_table_glm, file = 'C:/Users/ckell/Dropbox/Gerrycamp Regressions Project/Alaska Project/data/mod_fit/glm.csv')
 write.csv(v_table_bym, file = 'C:/Users/ckell/Dropbox/Gerrycamp Regressions Project/Alaska Project/data/mod_fit/bym.csv')
 write.csv(v_table_ler, file = 'C:/Users/ckell/Dropbox/Gerrycamp Regressions Project/Alaska Project/data/mod_fit/ler.csv')
-write.csv(v_table_sglmm, file = 'C:/Users/ckell/Dropbox/Gerrycamp Regressions Project/Alaska Project/data/mod_fit/sglmm.csv')```
-
+#write.csv(v_table_sglmm, file = 'C:/Users/ckell/Dropbox/Gerrycamp Regressions Project/Alaska Project/data/mod_fit/sglmm.csv')```
+```
 
 
 To Do: 
