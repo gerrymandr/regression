@@ -24,17 +24,10 @@ library(car)
 
 model.1 <- lm(D.Dist.Vote ~ D.Pres.Vote + R.Pres.Vote + sumTOTALPOP + sumBLACK + sumWHITE + sumHISPANIC +IncumD_VEP + IncumR_VEP + County, data = rdataContest)
 
-
 summary(model.1)
 
 
-
-
-
-
-
 model.2 <- lm(R.Dist.Vote ~ D.Pres.Vote + R.Pres.Vote + sumTOTALPOP + sumBLACK + sumWHITE + sumHISPANIC +IncumD_VEP + IncumR_VEP +County, data = rdataContest)
-
 
 summary(model.2)
 

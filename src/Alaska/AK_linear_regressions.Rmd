@@ -1,0 +1,87 @@
+---
+title: "Mayer Regression Work"
+author: "Coly Elhai"
+date: "June 11, 2018"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Read in precinct data
+
+```{r}
+setwd("C:/Users/ckell/Dropbox/Gerrycamp Regressions Project/Alaska Project")
+AKData <- read.csv("AKDataByPrecinct.csv", header = TRUE)
+
+
+AKData$IncumD_Pop <- AKData$Incumbent.D*AKData$sumTOTALPOP
+AKData$IncumR_Pop <- AKData$Incumbent.R*AKData$sumTOTALPOP
+
+AKDataContested<- AKData [which(AKData$Contested == "B"),]
+
+model.Dem <- lm(D.Dist.Vote ~ D.Pres.Vote + R.Pres.Vote + sumTOTALPOP + sumBLACK + sumWHITE + sumHISPANIC +IncumD_Pop + IncumR_Pop, data = AKDataContested)
+
+model.Rep <- lm(R.Dist.Vote ~ D.Pres.Vote + R.Pres.Vote + sumTOTALPOP + sumBLACK + sumWHITE + sumHISPANIC +IncumD_Pop + IncumR_Pop, data = AKDataContested)
+
+summary(model.Dem)
+summary(model.Rep)
+
+coeffs.Dem <-summary(model.Dem)$coefficients[,1]
+coeffs.Rep <-summary(model.Rep)$coefficients[,1]
+
+coeffs.Dem <- as.numeric(coeffs.Dem)
+coeffs.Rep <- as.numeric(coeffs.Rep)
+
+coeffs.Dem[8] <- 0
+coeffs.Dem[9] <- 0
+coeffs.Rep[8] <- 0
+coeffs.Rep[9] <- 0
+
+#AKDataContestedColumns <- AKDataContested[,c("R.Dist.Vote","D.Pres.Vote", "R.Pres.Vote", "sumTOTALPOP", "sumBLACK", "sumWHITE", "sumHISPANIC", "IncumD_Pop", "IncumR_Pop")]
+
+mod_dat <- AKData[,c("D.Pres.Vote", "R.Pres.Vote", "sumTOTALPOP", "sumBLACK", "sumWHITE", "sumHISPANIC", "IncumD_Pop", "IncumR_Pop")]
+
+mod_dat$int <- rep(1, nrow(mod_dat))
+
+#mod_dat <- cbind(AKDataContestedColumns[,9], AKDataContestedColumns[,1:8])
+mod_dat <- cbind(mod_dat[,9], mod_dat[,1:8])
+
+tableDem <- as.matrix(mod_dat)%*%coeffs.Dem
+tableDem <- as.numeric(tableDem)
+tableDem <- cbind(tableDem, AKData$District)
+tableDem <- as.data.frame(tableDem)
+colnames(tableDem) <- c("votes", "District")
+
+length(unique(tableDem$District))
+
+v_table_d <- tableDem %>% group_by(District) %>% dplyr::summarise(dem_votes=sum(votes))
+
+tableRep <- as.matrix(mod_dat)%*%coeffs.Rep
+tableRep <- as.numeric(tableRep)
+tableRep <- cbind(tableRep, AKData$District)
+tableRep <- as.data.frame(tableRep)
+colnames(tableRep) <- c("votes", "District")
+
+v_table_r <- tableRep %>% group_by(District) %>% dplyr::summarise(rep_votes=sum(votes))
+
+v_table <- left_join(v_table_d, v_table_r)
+
+colnames(v_table) <- c("District", "Dem. Votes", "Rep. Votes")
+
+#save dataframe
+write.csv(v_table, file = 'C:/Users/ckell/Dropbox/Gerrycamp Regressions Project/Alaska Project/data/mod_fit/lin_mod.csv')
+```
+
+
+Note: Need to make sure that we are making the same conclusions that we would using the actual data.
+
+
+
+##Build table of house district estimates
+
+```{r}
+model.1 <- lm(D.Dist.Vote ~ D.Pres.Vote + R.Pres.Vote + sumTOTALPOP + sumBLACK + sumWHITE + sumHISPANIC +IncumD_VEP + IncumR_VEP + County, data = rdataContest)
+
+```
