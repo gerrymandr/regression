@@ -98,7 +98,7 @@ def check_all_matchings(data):
 
 
 
-def make_hist(filename):
+def make_hist(filename, name):
     #load in data and run through matchings
     d = load_data(filename)
 
@@ -107,7 +107,9 @@ def make_hist(filename):
 
 
     #plot results
-    plt.figure(figsize=(8,10))
+    fig = plt.figure(figsize=(8,10))
+
+    st = fig.suptitle(name, fontsize=14)
 
     plt.subplot("311")
     plt.hist(seats, bins=len(list(set(seats))))
@@ -134,6 +136,9 @@ def make_hist(filename):
     plt.ylabel("Frequency")
 
     plt.tight_layout()
+
+    st.set_y(0.95)
+    fig.subplots_adjust(top=0.9)
 
     plt.savefig("hist.png")
 
