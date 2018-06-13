@@ -115,17 +115,17 @@ unc <- unique(c(which(is.na(prec_shp$D.Dist.Vote)), which(is.na(prec_shp$R.Dist.
 con_shp <- prec_shp[-unc,]
 
 #non-spatial modeling
-d.form <- D.Dist.Vote ~ D.Pres.Vote + R.Pres.Vote+sumTOTALPOP +sumBLACK + sumWHITE + sumHISPANIC+ IncumD_Pop + IncumR_Pop
-r.form <- R.Dist.Vote ~ D.Pres.Vote + R.Pres.Vote+sumTOTALPOP +sumBLACK + sumWHITE + sumHISPANIC+ IncumD_Pop + IncumR_Pop
+d.form <- D.Dist.Vote ~ D.Pres.Vote + R.Pres.Vote+sumTOTALPOP +sumBLACK + sumWHITE + sumHISPANIC+ IncumD_Pop + IncumR_Pop #+ County#try adding fixed effects for county
+r.form <- R.Dist.Vote ~ D.Pres.Vote + R.Pres.Vote+sumTOTALPOP +sumBLACK + sumWHITE + sumHISPANIC+ IncumD_Pop + IncumR_Pop #+ County#try adding fixed effects for county
 #d.model <- lm(formula=d.form, data=prec_shp@data)
 #d.resid.model <- residuals(d.model)
 #r.model <- lm(formula=r.form, data=prec_shp@data)
 #r.resid.model <- residuals(r.model)
 
 c.d.model <- lm(formula=d.form, data=con_shp@data)
-c.d.resid.model <- residuals(c.d.model)
+c.d.resid.model <- con_shp@data$D.Dist.Vote - c.d.model$fitted.values
 c.r.model <- lm(formula=r.form, data=con_shp@data)
-c.r.resid.model <- residuals(c.r.model)
+c.r.resid.model <- con_shp@data$R.Dist.Vote - c.r.model$fitted.values
 
 
 
@@ -136,9 +136,9 @@ c.r.resid.model <- residuals(c.r.model)
 #r.resid.glm <- residuals(r.glm_model)
 
 c.d.glm_model <- glm(formula=d.form, family = "poisson", data=con_shp@data)
-c.d.resid.glm <- residuals(c.d.glm_model)
+c.d.resid.glm <- con_shp@data$D.Dist.Vote - c.d.glm_model$fitted.values
 c.r.glm_model <- glm(formula=r.form, family = "poisson", data=con_shp@data)
-c.r.resid.glm <- residuals(c.r.glm_model)
+c.r.resid.glm <- con_shp@data$R.Dist.Vote - c.r.glm_model$fitted.values
 
 
 #need to remove shape file objects with no D.Dist.Vote
@@ -326,6 +326,12 @@ r.pred.ler <- c.r.model.ler$fitted.values
 #d.pred.sglmm <- c.d.sp.sglmm.fit$fitted.values
 #r.pred.sglmm <- c.r.sp.sglmm.fit$fitted.values
 
+
+actual_tab <- cbind(nonb_shp@data$District, actual.d, actual.r)
+actual_tab <- as.data.frame(actual_tab)
+colnames(actual_tab) <- c("District", "actual_d", "actual_r")
+test <- actual_tab %>% group_by(District) %>% dplyr::summarise(dem_votes=sum(actual_d))
+
 ```
 
 Now, I will compute the MSPE for each model.
@@ -356,6 +362,7 @@ r.ler.mspe <- mean((r.pred.ler-actual.r)^2)
 
 mspe_tab <- rbind(c(d.lm.mspe, d.glm.mspe, d.bym.mspe, d.ler.mspe),#, d.sglmm.mspe),
                   c(r.lm.mspe, r.glm.mspe, r.bym.mspe, r.ler.mspe))#, r.sglmm.mspe))
+#mspe_tab_count <- mspe_tab
 colnames(mspe_tab) <- c("lin", "glm", "bym", "leroux")#, "sglmm")
 rownames(mspe_tab) <- c("Democrat", "Republican")
 
@@ -388,9 +395,8 @@ mod_dat <- demog_vote[,c("D.Pres.Vote", "R.Pres.Vote", "sumTOTALPOP", "sumBLACK"
 mod_dat$int <- rep(1, nrow(mod_dat))
 mod_dat <- cbind(mod_dat[,9], mod_dat[,1:8])
 
-
 #create function that returns predicted values under counterfactual situation
-pred_val <- function(coeffs.Dem, coeffs.Rep){
+pred_val <- function(coeffs.Dem, coeffs.Rep, mod_dat){
   coeffs.Dem[8] <- 0
   coeffs.Dem[9] <- 0
   coeffs.Rep[8] <- 0
@@ -445,6 +451,9 @@ coeffs.Rep <- as.numeric(coeffs.Rep)
 
 v_table_glm <- pred_val(coeffs.Dem, coeffs.Rep)
 
+length(which(v_table_glm[,2] > v_table_glm[,3])) #still only predicts 3
+
+
 ######
 #BYM:
 ######
@@ -486,6 +495,97 @@ write.csv(v_table_glm, file = 'C:/Users/ckell/Dropbox/Gerrycamp Regressions Proj
 write.csv(v_table_bym, file = 'C:/Users/ckell/Dropbox/Gerrycamp Regressions Project/Alaska Project/data/mod_fit/bym.csv')
 write.csv(v_table_ler, file = 'C:/Users/ckell/Dropbox/Gerrycamp Regressions Project/Alaska Project/data/mod_fit/ler.csv')
 #write.csv(v_table_sglmm, file = 'C:/Users/ckell/Dropbox/Gerrycamp Regressions Project/Alaska Project/data/mod_fit/sglmm.csv')```
+```
+
+Now, we will consider county fixed effects in our counterfactual scenario.
+
+```{r}
+
+#First, I will create the model dataframe
+mod_dat <- demog_vote[,c("D.Pres.Vote", "R.Pres.Vote", "sumTOTALPOP", "sumBLACK", "sumWHITE", "sumHISPANIC", "IncumD_Pop", "IncumR_Pop")]
+d_mod_dat <- con_shp@data[,c("D.Dist.Vote", "D.Pres.Vote", "R.Pres.Vote", "sumTOTALPOP", "sumBLACK", "sumWHITE", "sumHISPANIC", "IncumD_Pop", "IncumR_Pop")]
+r_mod_dat <- con_shp@data[,c("R.Dist.Vote", "D.Pres.Vote", "R.Pres.Vote", "sumTOTALPOP", "sumBLACK", "sumWHITE", "sumHISPANIC", "IncumD_Pop", "IncumR_Pop")]
+
+
+mod_mat <- model.matrix( ~ County - 1, data=con_shp@data )
+#d_mod_dat$int <- rep(1, nrow(d_mod_dat))
+#d_mod_dat <- cbind(d_mod_dat[,1], d_mod_dat[,10], d_mod_dat[,2:9])#, mod_mat)
+d_mod_dat <- cbind(d_mod_dat, mod_mat)
+#colnames(d_mod_dat)[1:2]<- c("D.Dist.Vote", "int")
+#r_mod_dat$int <- rep(1, nrow(r_mod_dat))
+#r_mod_dat <- cbind(r_mod_dat[,1], r_mod_dat[,10], r_mod_dat[,2:9])#, mod_dat)
+r_mod_dat <- cbind(r_mod_dat, mod_mat)
+#colnames(r_mod_dat)[1:2]<- c("R.Dist.Vote", "int")
+mod_mat2 <- model.matrix( ~ County - 1, data=demog_vote)
+mod_dat$int <- rep(1, nrow(mod_dat))
+mod_dat <- cbind(mod_dat[,9], mod_dat[,1:8], mod_mat2)
+colnames(mod_dat)[1]<- c("int")
+
+#non-spatial modeling
+d.form <- D.Dist.Vote ~ .
+r.form <- R.Dist.Vote ~ .
+
+c.d.model <- lm(formula=d.form, data=d_mod_dat)
+c.d.resid.model <- con_shp@data$D.Dist.Vote - c.d.model$fitted.values
+c.r.model <- lm(formula=r.form, data=r_mod_dat)
+c.r.resid.model <- con_shp@data$R.Dist.Vote - c.r.model$fitted.values
+
+#glm model
+
+c.d.glm_model <- glm(formula=d.form, family = "poisson", data=d_mod_dat)
+c.d.resid.glm <- con_shp@data$D.Dist.Vote - c.d.glm_model$fitted.values
+c.r.glm_model <- glm(formula=r.form, family = "poisson", data=r_mod_dat)
+c.r.resid.glm <- con_shp@data$R.Dist.Vote - c.r.glm_model$fitted.values
+
+test2 <- resid(c.d.glm_model) 
+
+#test2 <- c.d.glm_model$residuals
+test2 <- as.data.frame(test2)
+test3 <- c.d.glm_model$fitted.values
+actual_d <- d_mod_dat$D.Dist.Vote
+full_dat <- cbind(actual_d, test3, test2)
+full_dat$resid <- full_dat[,1]-full_dat[,2]
+?residuals
+
+######
+#Linear Model:
+######
+
+#take out columns with column sum = 0
+test <- mod_dat[,-as.numeric(which(colSums(d_mod_dat) == 0))]
+test <- test[,-32] #also taking out CountyYukon-Koyukuk Census Area`
+
+coeffs.Dem <-summary(c.d.model)$coefficients[,1]
+coeffs.Rep <-summary(c.r.model)$coefficients[,1]
+
+#sum(test[,32])
+#colnames(test)[32]
+
+coeffs.Dem <- as.numeric(coeffs.Dem)
+coeffs.Rep <- as.numeric(coeffs.Rep)
+
+v_table_lm <- pred_val(coeffs.Dem, coeffs.Rep, test)
+
+######
+#GLM:
+######
+
+coeffs.Dem <-summary(c.d.glm_model)$coefficients[,1]
+coeffs.Rep <-summary(c.r.glm_model)$coefficients[,1]
+
+coeffs.Dem <- as.numeric(coeffs.Dem)
+coeffs.Rep <- as.numeric(coeffs.Rep)
+
+v_table_glm <- pred_val(coeffs.Dem, coeffs.Rep, test)
+
+length(which(v_table_glm[,2] > v_table_glm[,3])) #still only predicts 4
+
+
+#linear model
+d.lm.mspe <- mean((c.d.resid.model)^2)
+#glm
+d.glm.mspe <- mean((c.d.resid.glm)^2)
+r.glm.mspe <- mean((c.r.resid.glm)^2)
 ```
 
 
