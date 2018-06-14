@@ -622,8 +622,5 @@ save.image(file = "C:/Users/ckell/Dropbox/Gerrycamp Regressions Project/Alaska P
 To Do: 
 * need to also incorporate incumbency
 * cross validation statistics?
-* try including and not the county indicator
-* hypotheticaly if there were no incumbents, fit the model on precincts and then aggregate to the house district level, and see who would win
-** in other words, we want two columns (repub votes and dem votes) for each of the 40 districts - do a group_by
 * Histogram EG and # D Seats
-*Also mark boundary lines of districts
+* look at TOTAL_POP vs sumTOTAL_POP
