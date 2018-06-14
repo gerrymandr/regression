@@ -425,7 +425,7 @@ pred_val <- function(coeffs.Dem, coeffs.Rep, mod_dat){
   
   tableDem <- as.matrix(mod_dat)%*%coeffs.Dem
   tableDem <- as.numeric(tableDem)
-  tableDem <- exp(tableDem) #comment out when not glm
+  tableDem <- exp(tableDem) #comment out when lm
   tableDem <- cbind(tableDem, demog_vote$District)
   #tableDem <- cbind(tableDem, con_shp@data$District)
   tableDem <- as.data.frame(tableDem)
@@ -437,7 +437,7 @@ pred_val <- function(coeffs.Dem, coeffs.Rep, mod_dat){
   
   tableRep <- as.matrix(mod_dat)%*%coeffs.Rep
   tableRep <- as.numeric(tableRep)
-  tableRep <- exp(tableRep) #comment out when not glm
+  tableRep <- exp(tableRep) #comment out when lm
   tableRep <- cbind(tableRep, demog_vote$District)
   #tableRep <- cbind(tableRep, con_shp@data$District)
   tableRep <- as.data.frame(tableRep)
