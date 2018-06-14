@@ -1,0 +1,623 @@
+---
+  title: "CAR Model, Mayer"
+author: "Claire Kelling"
+date: "June 11, 2018"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+  
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+The purpose of this code is to fit the CAR model to voting data, aggregated by ward. We only have Census data by district and/or block group so this presents a spatial mismatch file. 
+
+First, we will install all necessary packages.
+```{r}
+# Packages:
+library(sp)
+library(spdep)
+library(classInt)
+library(fields)
+library(ggplot2)
+library(dplyr)
+library(ade4) 
+library(igraph) 
+library(CARBayesdata)
+library(CARBayes)
+library(gridExtra)
+library(xtable)
+library(stringi)
+require(rgdal)
+library(ngspatial)
+library(plyr)
+
+```
+
+Now, we will load the data, including the following:
+  * shape files
+* demographics
+* voting data
+```{r}
+#ward shape files
+#wi_ward
+ward_shp <- readOGR(dsn = "C:/Users/ckell/Dropbox/Gerrycamp Regressions Project/Mayer Project/data", layer = "wiward")
+
+#voting and demographic data
+#quick fit with demographics
+demog_vote <- read.csv("C:/Users/ckell/Dropbox/Gerrycamp Regressions Project/Mayer Project/data/QuickFitWithDemographics.csv")
+
+```
+
+Exploring shape file
+```{r}
+plot(ward_shp)
+```
+
+
+Now we need to join the spatial polygons and the demographic/voting data.
+```{r}
+#re-formatting to add the data to the 
+View(ward_shp@data)
+ward_shp@data <- ward_shp@data[,-c(14:ncol(ward_shp@data))]
+
+#check classes
+class(ward_shp@data$OBJECTID_1)
+
+#change column name for ID variables for which we will join
+colnames(demog_vote)[2] <- "GEOID"
+colnames(ward_shp@data)[1] <- "GEOID"
+
+#change to character variable
+demog_vote$GEOID <- as.character(demog_vote$GEOID)
+ward_shp@data$GEOID <- as.character(ward_shp@data$GEOID)
+
+#creating new variable
+demog_vote$IncumD_Pop <- demog_vote$Dincumbent*demog_vote$PERSONS18
+demog_vote$IncumR_Pop <- demog_vote$Rincumbent*demog_vote$PERSONS18
+
+#join on GEOID
+ward_shp@data <- left_join(ward_shp@data, demog_vote, by = (GEOID = "GEOID"))
+
+length(which(is.na(ward_shp@data$ED01)))
+nrow(ward_shp@data)
+
+nrow(demog_vote)
+nrow(ward_shp@data)
+
+class(demog_vote$GEOID)
+class(ward_shp@data$GEOID)
+
+#we have successfully joined the two datasets
+```
+
+
+Our first step in terms of modeling will be to run our model in a linear model and to test for spatial dependence. 
+```{r}
+#we need to decide variables to use in our analysis
+colnames(demog_vote)
+#contested - B if it is contested
+#Mayer: BBPRESDEM12, BBPRESREP12, PERSONS18, BLACK18, HISPANIC18
+#Mayer Response: BBWSADEM12, BBWSAREP12
+#TP (third party)
+
+#approximately 50% of the data is contested (vs uncontested)
+#right now, I will just use the uncontested data
+length(c(which(ward_shp$BBWSADEM12 == 0 ), which(ward_shp$BBWSAREP12==0)))
+unc <- unique(c(which(ward_shp$BBWSADEM12 == 0 ), which(ward_shp$BBWSAREP12 == 0 )))
+
+con_shp <- ward_shp[-unc,]
+
+#non-spatial modeling
+d.form <- BBWSADEM12 ~ BBPRESDEM12 + BBPRESREP12+PERSONS18 +BLACK18 + WHITE18 + HISPANIC18+ IncumD_Pop + IncumR_Pop #+ County#try adding fixed effects for county
+r.form <- BBWSAREP12 ~ BBPRESDEM12 + BBPRESREP12+PERSONS18 +BLACK18 + WHITE18 + HISPANIC18+ IncumD_Pop + IncumR_Pop #+ County#try adding fixed effects for county
+#d.model <- lm(formula=d.form, data=ward_shp@data)
+#d.resid.model <- residuals(d.model)
+#r.model <- lm(formula=r.form, data=ward_shp@data)
+#r.resid.model <- residuals(r.model)
+
+c.d.model <- lm(formula=d.form, data=con_shp@data)
+c.d.resid.model <- con_shp@data$BBWSADEM12 - c.d.model$fitted.values
+c.r.model <- lm(formula=r.form, data=con_shp@data)
+c.r.resid.model <- con_shp@data$BBWSAREP12 - c.r.model$fitted.values
+
+
+
+#glm model
+#d.glm_model <- glm(formula=d.form, family = "poisson", data=ward_shp@data)
+#d.resid.glm <- residuals(d.glm_model)
+#r.glm_model <- glm(formula=r.form, family = "poisson", data=ward_shp@data)
+#r.resid.glm <- residuals(r.glm_model)
+
+c.d.glm_model <- glm(formula=d.form, family = "poisson", data=con_shp@data)
+c.d.resid.glm <- con_shp@data$BBWSADEM12 - c.d.glm_model$fitted.values
+c.r.glm_model <- glm(formula=r.form, family = "poisson", data=con_shp@data)
+c.r.resid.glm <- con_shp@data$BBWSAREP12 - c.r.glm_model$fitted.values
+
+
+#need to remove shape file objects with no BBWSADEM12
+#no_dem <- ward_shp[-which(is.na(ward_shp$BBWSADEM12)),]
+#no_rep <- ward_shp[-which(is.na(ward_shp$BBWSAREP12)),]
+
+
+#test for spatial dependence
+#null hypothesis of no spatial autocorrelation (alternative of positive spatial autocorrelation)
+#also computes Moran's I statistic 
+#if p-value < 0.05, we conclude there is positve spatial autocorrelation
+#W.nb <- poly2nb(ward_shp, row.names = rownames(ward_shp@data))
+#W.nb.nod <- poly2nb(no_dem, row.names = rownames(no_dem@data))
+#W.nb.nor <- poly2nb(no_rep, row.names = rownames(no_rep@data))
+W.nb.con <- poly2nb(con_shp, row.names = rownames(con_shp@data))
+
+#coords <- coordinates(ward_shp)
+#plot(ward_shp)
+#plot(W.nb, coords, pch = 1, cex = 0.6, add = TRUE)
+
+#remove empty neighbor sets
+
+##############
+### Creating adjacency matrix from nb
+##############
+#W_mat <- nb2mat(W.nb, style="B", zero.policy=TRUE) #includes some islands
+#View(head(W_mat))
+#W_mat_nod <- nb2mat(W.nb.nod, style="B", zero.policy=TRUE)
+#W_mat_nor <- nb2mat(W.nb.nor, style="B", zero.policy=TRUE)
+W_mat_con <- nb2mat(W.nb.con, style="B", zero.policy=TRUE)
+
+
+#############
+### Moran's I Test
+#############
+
+#addition
+#W.list <- nb2listw(W.nb, style="B", zero.policy = TRUE)
+#W.list.nod <- nb2listw(W.nb.nod, style="B", zero.policy = TRUE)
+#W.list.nor <- nb2listw(W.nb.nor, style="B", zero.policy = TRUE)
+W.list.con <- nb2listw(W.nb.con, style="B", zero.policy = TRUE)
+
+#moran.mc(x=resid.glm, listw=W.list, nsim=1000, zero.policy = FALSE)
+#moran.mc(x=d.resid.glm, listw=W.list.nod, nsim=1000, zero.policy = TRUE)
+#moran.mc(x=r.resid.glm, listw=W.list.nor, nsim=1000, zero.policy = TRUE)
+
+moran.mc(x=c.d.resid.glm, listw=W.list.con, nsim=1000, zero.policy = TRUE)
+moran.mc(x=c.r.resid.glm, listw=W.list.con, nsim=1000, zero.policy = TRUE)
+
+#if p-value < 0.05, we conclude there is positve spatial autocorrelation
+
+```
+
+
+Need to eliminate the islands with no neighbors
+```{r}
+no_nb <- which(rowSums(W_mat_con) == 0)
+
+
+nonb_W <- W_mat_con[-no_nb, -no_nb]
+nonb_shp <- con_shp[-no_nb,]
+
+nonb_Wnb <- poly2nb(nonb_shp, row.names = rownames(nonb_shp@data))
+```
+
+
+Now, we will fit both the Leroux and the BYM model.
+```{r}
+##############
+#Leroux Model
+##############
+#d.model.ler <- S.CARleroux(formula=d.form, data=no_dem@data,
+#                             family="poisson", W=W_mat_nod, burnin=20000, n.sample=120000, thin=10)
+
+#r.model.ler <- S.CARleroux(formula=r.form, data=no_rep@data,
+#                             family="poisson", W=W_mat_nor, burnin=20000, n.sample=120000, thin=10)
+
+
+c.d.model.ler <- S.CARleroux(formula=d.form, data=nonb_shp@data,
+                             family="poisson", W=nonb_W, burnin=20000, n.sample=120000, thin=10)
+
+c.r.model.ler <- S.CARleroux(formula=r.form, data=nonb_shp@data,
+                             family="poisson", W=nonb_W, burnin=20000, n.sample=120000, thin=10)
+
+##############
+# BYM Model
+##############
+#d.model.bym <- S.CARbym(formula=d.form, data=no_dem@data,
+#                          family="poisson", W=W_mat_nod, burnin=20000, n.sample=120000, thin=10)
+
+#r.model.bym <- S.CARbym(formula=r.form, data=no_rep@data,
+#                          family="poisson", W=W_mat_nor, burnin=20000, n.sample=120000, thin=10)
+
+c.d.model.bym <- S.CARbym(formula=d.form, data=nonb_shp@data,
+                             family="poisson", W=nonb_W, burnin=20000, n.sample=120000, thin=10)
+
+
+c.r.model.bym <- S.CARbym(formula=r.form, data=nonb_shp@data,
+                             family="poisson", W=nonb_W, burnin=20000, n.sample=120000, thin=10)
+
+##############
+# Model Evaluation
+##############
+#  dem ler
+#d.model.ler$modelfit
+#  rep ler
+#d.model.ler$modelfit
+#  dem bym
+#r.model.bym$modelfit
+#  rep bym
+#r.model.bym$modelfit
+
+#Only using contested precincts:
+#  dem ler
+c.d.model.ler$modelfit
+#  rep ler
+c.r.model.ler$modelfit
+#  dem bym
+c.d.model.bym$modelfit
+#  rep bym
+c.r.model.bym$modelfit
+```
+
+Now, I will also include a model that accounts for spatial autocorrelation.
+```{r}
+#d.sp.sglmm.fit <- sparse.sglmm(formula = d.form,data=no_dem@data, family = poisson, A = W_mat_nod,
+#                             verbose = TRUE) #tune = list(sigma.s = 0.02)
+
+#r.sp.sglmm.fit <- sparse.sglmm(formula = r.form,data=no_rep@data, family = poisson, A = W_mat_nor,
+#                             verbose = TRUE) #tune = list(sigma.s = 0.02)
+
+rownames(nonb_W) <- NULL
+c.d.sp.sglmm.fit <- sparse.sglmm(formula = d.form,data=nonb_shp@data, family = poisson, 
+                                 A = nonb_W, verbose = TRUE) #tune = list(sigma.s = 0.02)
+
+#25 min at 9:43, stuck at 44%, 23m 49s
+
+c.r.sp.sglmm.fit <- sparse.sglmm(formula = r.form,data=nonb_shp@data, family = poisson, 
+                                 A = nonb_W, verbose = TRUE) #tune = list(sigma.s = 0.02)
+#11%, 32m 22s remaining at 9:56pm
+#55% ~19m 27s  
+
+#save the models for later reference, takes over an hour to run
+save(c.d.model.ler, c.r.model.ler, c.d.model.bym, c.r.model.bym, 
+     file = "C:/Users/ckell/Dropbox/Gerrycamp Regressions Project/Mayer Project/prelim_fit/prelim_mod_fit2.Rdata")
+
+#summary(sp.sglmm.fit)
+#d.sp.sglmm.fit$dic
+#d.sp.sglmm.fit$pD
+
+#r.sp.sglmm.fit$dic
+#r.sp.sglmm.fit$pD
+
+c.d.sp.sglmm.fit$dic
+c.d.sp.sglmm.fit$pD
+
+c.r.sp.sglmm.fit$dic
+c.r.sp.sglmm.fit$pD
+
+```
+
+Now, we need to compare coefficients to see if there was any spatial autocorrelation.
+```{r}
+model.bym$summary.results[,1:3]
+
+summary(c.d.sp.sglmm.fit)
+```
+
+#Model Evaluation
+Now, I will compare the models using mean-squared prediction error.
+
+First, I need to set up predicted for each model and actual for both Democratic and Republican races.
+```{r}
+actual.d <- nonb_shp@data$BBWSADEM12
+actual.r <- nonb_shp@data$BBWSAREP12
+
+d.pred.bym <- c.d.model.bym$fitted.values
+r.pred.bym <- c.r.model.bym$fitted.values
+
+d.pred.ler <- c.d.model.ler$fitted.values
+r.pred.ler <- c.r.model.ler$fitted.values
+
+#d.pred.sglmm <- c.d.sp.sglmm.fit$fitted.values
+#r.pred.sglmm <- c.r.sp.sglmm.fit$fitted.values
+
+# actual_tab <- cbind(nonb_shp@data$District, actual.d, actual.r)
+# actual_tab <- as.data.frame(actual_tab)
+# colnames(actual_tab) <- c("District", "actual_d", "actual_r")
+# test <- actual_tab %>% group_by(District) %>% dplyr::summarise(dem_votes=sum(actual_d))
+
+actual_tab <- cbind(con_shp@data$District, con_shp@data$BBWSADEM12, con_shp@data$BBWSAREP12)
+actual_tab <- as.data.frame(actual_tab)
+colnames(actual_tab) <- c("District", "actual_d", "actual_r")
+actual_tab2 <- actual_tab %>% group_by(District) %>% dplyr::summarise(dem_votes=sum(actual_d), rep_votes = sum(actual_r))
+
+length(which(actual_tab2[,2] > actual_tab2[,3])) #6 times that the actual_tab was greater (Samir said 5?)
+
+```
+
+Now, I will compute the MSPE for each model.
+```{r}
+#### Democratic Prediction:
+#linear model
+d.lm.mspe <- mean((c.d.resid.model)^2)
+#glm
+d.glm.mspe <- mean((c.d.resid.glm)^2)
+#bym
+d.bym.mspe <- mean((d.pred.bym-actual.d)^2)
+#leroux
+d.ler.mspe <- mean((d.pred.ler-actual.d)^2)
+#sglmm
+#d.sglmm.mspe <- mean((d.pred.sglmm - actual.d)^2)
+
+#### Republican Prediction:
+#linear model
+r.lm.mspe <- mean((c.r.resid.model)^2)
+#glm
+r.glm.mspe <- mean((c.r.resid.glm)^2)
+#bym
+r.bym.mspe <- mean((r.pred.bym-actual.r)^2)
+#leroux
+r.ler.mspe <- mean((r.pred.ler-actual.r)^2)
+#sglmm
+#r.sglmm.mspe <- mean((r.pred.sglmm - actual.r)^2)
+
+mspe_tab <- rbind(c(d.lm.mspe, d.glm.mspe, d.bym.mspe, d.ler.mspe),#, d.sglmm.mspe),
+                  c(r.lm.mspe, r.glm.mspe, r.bym.mspe, r.ler.mspe))#, r.sglmm.mspe))
+#mspe_tab_count <- mspe_tab
+colnames(mspe_tab) <- c("lin", "glm", "bym", "leroux")#, "sglmm")
+rownames(mspe_tab) <- c("Democrat", "Republican")
+
+```
+
+
+Bayesian Model Comparison Techniques:
+```{r}
+#smaller DIC is better
+#higher perc dev expl is better
+#leroux models are much better and explain much of the deviance (than bym)
+# dem ler
+c.d.model.ler$modelfit
+#  rep ler
+c.r.model.ler$modelfit
+#  dem bym
+c.d.model.bym$modelfit
+#  rep bym
+c.r.model.bym$modelfit
+
+bayes_mod_eval <- rbind(c(c.d.model.bym$modelfit[1], c.d.model.ler$modelfit[1], 
+                          c.r.model.bym$modelfit[1], c.r.model.ler$modelfit[1]),
+                        c(c.d.model.bym$modelfit[7], c.d.model.ler$modelfit[7], 
+                          c.r.model.bym$modelfit[7], c.r.model.ler$modelfit[7]))
+bayes_mod_eval <- as.data.frame(bayes_mod_eval)
+colnames(bayes_mod_eval) <- c("BYM Dem", "Ler Dem", "BYM Rep", "Ler Rep")
+rownames(bayes_mod_eval) <- c("DIC", "perc dev explained")
+
+#c.d.sp.sglmm.fit$dic
+#c.d.sp.sglmm.fit$pD
+
+#c.r.sp.sglmm.fit$dic
+#c.r.sp.sglmm.fit$pD
+```
+
+
+Creation of counterfactual scenario where there is no incumbent:
+```{r}
+#First, I will create the model dataframe
+mod_dat <- demog_vote[,c("BBPRESDEM12", "BBPRESREP12", "PERSONS18", "BLACK18", "WHITE18", "HISPANIC18", "IncumD_Pop", "IncumR_Pop")]
+mod_dat$int <- rep(1, nrow(mod_dat))
+mod_dat <- cbind(mod_dat[,9], mod_dat[,1:8])
+
+mod_dat2 <- con_shp@data[,c("BBPRESDEM12", "BBPRESREP12", "PERSONS18", "BLACK18", "WHITE18", "HISPANIC18", "IncumD_Pop", "IncumR_Pop")]
+mod_dat2$int <- rep(1, nrow(mod_dat2))
+mod_dat2 <- cbind(mod_dat2[,9], mod_dat2[,1:8])
+
+#create function that returns predicted values under counterfactual situation
+pred_val <- function(coeffs.Dem, coeffs.Rep, mod_dat){
+  #mod_dat <- mod_dat2
+  coeffs.Dem[8] <- 0
+  coeffs.Dem[9] <- 0
+  coeffs.Rep[8] <- 0
+  coeffs.Rep[9] <- 0
+  
+  tableDem <- as.matrix(mod_dat)%*%coeffs.Dem
+  tableDem <- as.numeric(tableDem)
+  tableDem <- exp(tableDem) #comment out when not glm
+  tableDem <- cbind(tableDem, demog_vote$District)
+  #tableDem <- cbind(tableDem, con_shp@data$District)
+  tableDem <- as.data.frame(tableDem)
+  colnames(tableDem) <- c("votes", "District")
+  
+  length(unique(tableDem$District))
+  
+  v_table_d <- tableDem %>% group_by(District) %>% dplyr::summarise(dem_votes=sum(votes))
+  
+  tableRep <- as.matrix(mod_dat)%*%coeffs.Rep
+  tableRep <- as.numeric(tableRep)
+  tableRep <- exp(tableRep) #comment out when not glm
+  tableRep <- cbind(tableRep, demog_vote$District)
+  #tableRep <- cbind(tableRep, con_shp@data$District)
+  tableRep <- as.data.frame(tableRep)
+  colnames(tableRep) <- c("votes", "District")
+  
+  v_table_r <- tableRep %>% group_by(District) %>% dplyr::summarise(rep_votes=sum(votes))
+  
+  v_table <- left_join(v_table_d, v_table_r)
+  
+  colnames(v_table) <- c("District", "Dem. Votes", "Rep. Votes")
+  v_table2 <- v_table
+  return(v_table)
+}
+
+
+######
+#Linear Model:
+######
+
+coeffs.Dem <-summary(c.d.model)$coefficients[,1]
+coeffs.Rep <-summary(c.r.model)$coefficients[,1]
+
+coeffs.Dem <- as.numeric(coeffs.Dem)
+coeffs.Rep <- as.numeric(coeffs.Rep)
+
+v_table_lm <- pred_val(coeffs.Dem, coeffs.Rep, mod_dat)
+View(cbind(v_table_lm, actual_tab2))
+
+######
+#GLM:
+######
+
+#test3 <- coef(c.d.glm_model)
+#View(cbind(coeffs.Dem, test3))
+
+coeffs.Dem <-summary(c.d.glm_model)$coefficients[,1]
+coeffs.Rep <-summary(c.r.glm_model)$coefficients[,1]
+
+coeffs.Dem <- as.numeric(coeffs.Dem)
+coeffs.Rep <- as.numeric(coeffs.Rep)
+
+v_table_glm <- pred_val(coeffs.Dem, coeffs.Rep, mod_dat)
+View(cbind(v_table_glm, actual_tab2))
+
+length(which(v_table_glm[,2] > v_table_glm[,3])) #still only predicts 3
+
+
+######
+#BYM:
+######
+
+coeffs.Dem <- c.d.model.bym$summary.results[1:9,1]
+coeffs.Rep <- c.r.model.bym$summary.results[1:9,1]
+
+coeffs.Dem <- as.numeric(coeffs.Dem)
+coeffs.Rep <- as.numeric(coeffs.Rep)
+
+v_table_bym <- pred_val(coeffs.Dem, coeffs.Rep, mod_dat)
+length(which(v_table_bym[,2] > v_table_bym[,3])) #still only predicts 3
+
+######
+#Leroux:
+######
+
+coeffs.Dem <- c.d.model.ler$summary.results[1:9,1]
+coeffs.Rep <- c.r.model.ler$summary.results[1:9,1]
+
+coeffs.Dem <- as.numeric(coeffs.Dem)
+coeffs.Rep <- as.numeric(coeffs.Rep)
+
+v_table_ler <- pred_val(coeffs.Dem, coeffs.Rep, mod_dat)
+length(which(v_table_ler[,2] > v_table_ler[,3])) #still only predicts 2
+
+######
+#SGLMM:
+######
+
+# coeffs.Dem <- c.d.sp.sglmm.fit$coefficients
+# coeffs.Rep <- c.r.sp.sglmm.fit$coefficients
+# 
+# coeffs.Dem <- as.numeric(coeffs.Dem)
+# coeffs.Rep <- as.numeric(coeffs.Rep)
+# 
+# v_table_sglmm <- pred_val(coeffs.Dem, coeffs.Rep)
+
+write.csv(v_table_lm, file = 'C:/Users/ckell/Dropbox/Gerrycamp Regressions Project/Mayer Project/data/mod_fit/lin_mod.csv')
+write.csv(v_table_glm, file = 'C:/Users/ckell/Dropbox/Gerrycamp Regressions Project/Mayer Project/data/mod_fit/glm.csv')
+write.csv(v_table_bym, file = 'C:/Users/ckell/Dropbox/Gerrycamp Regressions Project/Mayer Project/data/mod_fit/bym.csv')
+write.csv(v_table_ler, file = 'C:/Users/ckell/Dropbox/Gerrycamp Regressions Project/Mayer Project/data/mod_fit/ler.csv')
+#write.csv(v_table_sglmm, file = 'C:/Users/ckell/Dropbox/Gerrycamp Regressions Project/Mayer Project/data/mod_fit/sglmm.csv')```
+```
+
+Now, we will consider county fixed effects in our counterfactual scenario.
+
+```{r}
+
+#First, I will create the model dataframe
+mod_dat <- demog_vote[,c("BBPRESDEM12", "BBPRESREP12", "PERSONS18", "BLACK18", "WHITE18", "HISPANIC18", "IncumD_Pop", "IncumR_Pop")]
+d_mod_dat <- con_shp@data[,c("BBWSADEM12", "BBPRESDEM12", "BBPRESREP12", "PERSONS18", "BLACK18", "WHITE18", "HISPANIC18", "IncumD_Pop", "IncumR_Pop")]
+r_mod_dat <- con_shp@data[,c("BBWSAREP12", "BBPRESDEM12", "BBPRESREP12", "PERSONS18", "BLACK18", "WHITE18", "HISPANIC18", "IncumD_Pop", "IncumR_Pop")]
+
+
+mod_mat <- model.matrix( ~ County - 1, data=con_shp@data )
+d_mod_dat <- cbind(d_mod_dat, mod_mat)
+r_mod_dat <- cbind(r_mod_dat, mod_mat)
+mod_mat2 <- model.matrix( ~ County - 1, data=demog_vote)
+mod_dat$int <- rep(1, nrow(mod_dat))
+mod_dat <- cbind(mod_dat[,9], mod_dat[,1:8], mod_mat2)
+colnames(mod_dat)[1]<- c("int")
+
+#non-spatial modeling
+d.form <- BBWSADEM12 ~ .
+r.form <- BBWSAREP12 ~ .
+
+c.d.model <- lm(formula=d.form, data=d_mod_dat)
+c.d.resid.model <- con_shp@data$BBWSADEM12 - c.d.model$fitted.values
+c.r.model <- lm(formula=r.form, data=r_mod_dat)
+c.r.resid.model <- con_shp@data$BBWSAREP12 - c.r.model$fitted.values
+
+#glm model
+
+c.d.glm_model <- glm(formula=d.form, family = "poisson", data=d_mod_dat)
+c.d.resid.glm <- con_shp@data$BBWSADEM12 - c.d.glm_model$fitted.values
+c.r.glm_model <- glm(formula=r.form, family = "poisson", data=r_mod_dat)
+c.r.resid.glm <- con_shp@data$BBWSAREP12 - c.r.glm_model$fitted.values
+
+######
+#Linear Model:
+######
+
+#take out columns with column sum = 0
+test <- mod_dat[,-as.numeric(which(colSums(d_mod_dat) == 0))]
+test <- test[,-32] #also taking out CountyYukon-Koyukuk Census Area`
+
+coeffs.Dem <-summary(c.d.model)$coefficients[,1]
+coeffs.Rep <-summary(c.r.model)$coefficients[,1]
+
+coeffs.Dem <- as.numeric(coeffs.Dem)
+coeffs.Rep <- as.numeric(coeffs.Rep)
+
+co_v_table_lm <- pred_val(coeffs.Dem, coeffs.Rep, test)
+length(which(co_v_table_lm[,2] > co_v_table_lm[,3])) #still only predicts 4
+
+######
+#GLM:
+######
+
+coeffs.Dem <-summary(c.d.glm_model)$coefficients[,1]
+coeffs.Rep <-summary(c.r.glm_model)$coefficients[,1]
+
+coeffs.Dem <- as.numeric(coeffs.Dem)
+coeffs.Rep <- as.numeric(coeffs.Rep)
+
+co_v_table_glm <- pred_val(coeffs.Dem, coeffs.Rep, test)
+
+length(which(co_v_table_glm[,2] > co_v_table_glm[,3])) #still only predicts 4
+
+
+#linear model
+co.d.lm.mspe <- mean((c.d.resid.model)^2)
+co.r.lm.mspe <- mean((c.r.resid.model)^2)
+#glm
+co.d.glm.mspe <- mean((c.d.resid.glm)^2)
+co.r.glm.mspe <- mean((c.r.resid.glm)^2)
+
+mspe_tab <- rbind(c(d.lm.mspe, d.glm.mspe, d.bym.mspe, d.ler.mspe, co.d.lm.mspe, co.d.glm.mspe),#, d.sglmm.mspe),
+                  c(r.lm.mspe, r.glm.mspe, r.bym.mspe, r.ler.mspe, co.r.lm.mspe, co.r.glm.mspe))#, r.sglmm.mspe))
+#mspe_tab_count <- mspe_tab
+colnames(mspe_tab) <- c("lin", "glm", "bym", "leroux", "county lm", "county glm")#, "sglmm")
+rownames(mspe_tab) <- c("Democrat", "Republican")
+View(mspe_tab)
+
+write.csv(co_v_table_lm, file = 'C:/Users/ckell/Dropbox/Gerrycamp Regressions Project/Mayer Project/data/mod_fit/co_lin_mod.csv')
+write.csv(co_v_table_glm, file = 'C:/Users/ckell/Dropbox/Gerrycamp Regressions Project/Mayer Project/data/mod_fit/co_glm.csv')
+
+#save workspace
+save.image(file = "C:/Users/ckell/Dropbox/Gerrycamp Regressions Project/Mayer Project/data/mod_fit/final_workspace.Rdata")
+
+```
+
+
+To Do: 
+* need to also incorporate incumbency
+* cross validation statistics?
+* try including and not the county indicator
+* hypotheticaly if there were no incumbents, fit the model on precincts and then aggregate to the house district level, and see who would win
+** in other words, we want two columns (repub votes and dem votes) for each of the 40 districts - do a group_by
+* Histogram EG and # D Seats
+*Also mark boundary lines of districts
