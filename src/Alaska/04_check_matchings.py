@@ -8,7 +8,6 @@ Created on Tue Jun 12 15:04:57 2018
 
 import csv
 import numpy as np
-from tqdm import tqdm
 import matplotlib.pyplot as plt
 import seaborn as sns
 
