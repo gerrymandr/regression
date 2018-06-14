@@ -1,0 +1,112 @@
+---
+  title: "Heat Maps, Alaska"
+author: "Claire Kelling"
+date: "June 14, 2018"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+  
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+The purpose of this code is to create heat maps for Alaska.
+
+First, we will install all necessary packages.
+```{r}
+# Packages:
+library(sp)
+library(spdep)
+library(classInt)
+library(fields)
+library(ggplot2)
+library(dplyr)
+library(ade4) 
+library(igraph) 
+library(CARBayesdata)
+library(CARBayes)
+library(gridExtra)
+library(xtable)
+library(stringi)
+require(rgdal)
+library(ngspatial)
+library(plyr)
+
+```
+
+Now, we will load the data, including the following:
+  * shape files
+* demographics
+* voting data
+```{r}
+#precinct shape files, showing some precincts to the right of the main figure
+prec_shp <- readOGR(dsn = "C:/Users/ckell/Dropbox/Gerrycamp Regressions Project/Alaska Project/data/2013-SW-Precinct-Proc-Plan", layer = "2013-SW-Proc-Shape-files")
+
+dist_shp <- readOGR(dsn = "C:/Users/ckell/Dropbox/Gerrycamp Regressions Project/Alaska Project/data/2013-HD-ProclamationPlan", layer = "2013ProclamationPlan")
+
+#voting and demographic data
+demog_vote <- read.csv("C:/Users/ckell/Dropbox/Gerrycamp Regressions Project/Alaska Project/AKDataByPrecinct.csv")
+
+#redo shape file from github source
+# https://github.com/aaron-strauss/precinct-shapefiles/blob/master/ak/2012_ak_precincts.zip
+#prec_shp2 <- readOGR(dsn = "C:/Users/ckell/Dropbox/Gerrycamp Regressions Project/Alaska Project/data/2012_ak_precincts", layer = "SW Amended Precinct shape files", p4s = "+init=epsg:3338")
+```
+
+
+Create heatmap based off of the % demographic
+```{r}
+heat_dat <- read.csv("C:/Users/ckell/Dropbox/Gerrycamp Regressions Project/Alaska Project/AKDataByPrecinct(1).csv")
+
+heat_dat <- heat_dat[-nrow(heat_dat),] #last row is NA
+
+#change column name for ID variables for which we will join
+colnames(heat_dat)[1] <- "GEOID"
+colnames(prec_shp@data)[3] <- "GEOID"
+
+#change to character variable
+heat_dat$GEOID <- as.character(heat_dat$GEOID)
+prec_shp@data$GEOID <- as.character(prec_shp@data$GEOID)
+
+prec_shp@data$id <- rownames(prec_shp@data)
+prec_shp@data <- left_join(prec_shp@data, heat_dat, by = (GEOID = "GEOID"))
+
+P4S.latlon <- CRS("+proj=longlat +datum=WGS84")
+
+dist_shp <- spTransform(dist_shp, CRS("+init=epsg:3338"))
+prec_shp <- spTransform(prec_shp, CRS("+init=epsg:3338"))
+
+heat_map <- function(heat_dat){
+  #prec_shp@data   <- join(prec_shp@data, data, by="CD_GEOCODI")
+  sp_f     <- fortify(prec_shp)
+  sp_f     <- join(sp_f,prec_shp@data, by="id")
+  sp_f$Percent_DVote <- as.numeric(as.character(sp_f$Percent_DVote))
+  sp_f <- sp_f[which(sp_f$long < 1e10),]
+  
+  dist_shp_f <- fortify(dist_shp)
+  
+  fit_by_prec <- ggplot()+ 
+    #geom_polygon(data=dist_shp,aes(long,lat, group = group), fill = NA, col = "red") + 
+    geom_polygon(data = sp_f, aes(long, lat, group = group, fill = Percent_DVote)) + 
+    coord_equal() +
+    labs(fill = "Percent Dem Vote")+ 
+    geom_polygon(data=dist_shp_f,aes(long,lat, group = group), fill = NA, col = "red") +
+    ggtitle("Percentage of Dem Vote by Precinct")+ scale_fill_gradient2(midpoint = 0.5,low = "red", high = "navyblue")
+  #+theme(text = element_text(size=30))+theme(axis.text.x=element_text(size=20))
+
+  return(fit_by_prec)
+}
+
+
+
+prop_by_prec <- ggplot()+ 
+  #geom_polygon(data=dist_shp,aes(long,lat, group = group), fill = NA, col = "red") + 
+  geom_polygon(data = sp_f, aes(long, lat, group = group, fill = (Reg..D.Voters-Reg..R.Voters)/Reg..Voters)) + 
+  coord_equal() +
+  labs(fill = "Reg Dem - Reg Rep / Total Reg")+ 
+  geom_polygon(data=dist_shp_f,aes(long,lat, group = group), fill = NA, col = "red") +
+  ggtitle("Reg Dem - Reg Rep / Total Reg by Precinct")+
+  scale_fill_gradient(low = "lightblue", high = "navyblue")
+
+```
+
