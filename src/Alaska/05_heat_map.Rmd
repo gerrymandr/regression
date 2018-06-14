@@ -58,18 +58,23 @@ Create heatmap based off of the % demographic
 ```{r}
 heat_dat <- read.csv("C:/Users/ckell/Dropbox/Gerrycamp Regressions Project/Alaska Project/AKDataByPrecinct(1).csv")
 
+ball_dat <- read.csv("C:/Users/ckell/Dropbox/Gerrycamp Regressions Project/Alaska Project/data/ballot_data.csv")
+
 heat_dat <- heat_dat[-nrow(heat_dat),] #last row is NA
 
 #change column name for ID variables for which we will join
 colnames(heat_dat)[1] <- "GEOID"
 colnames(prec_shp@data)[3] <- "GEOID"
+colnames(ball_dat)[1] <- "GEOID"
 
 #change to character variable
 heat_dat$GEOID <- as.character(heat_dat$GEOID)
 prec_shp@data$GEOID <- as.character(prec_shp@data$GEOID)
+ball_dat$GEOID <- as.character(ball_dat$GEOID)
 
 prec_shp@data$id <- rownames(prec_shp@data)
 prec_shp@data <- left_join(prec_shp@data, heat_dat, by = (GEOID = "GEOID"))
+prec_shp@data <- left_join(prec_shp@data, ball_dat, by = (GEOID = "GEOID"))
 
 P4S.latlon <- CRS("+proj=longlat +datum=WGS84")
 
@@ -107,6 +112,24 @@ prop_by_prec <- ggplot()+
   geom_polygon(data=dist_shp_f,aes(long,lat, group = group), fill = NA, col = "red") +
   ggtitle("Reg Dem - Reg Rep / Total Reg by Precinct")+
   scale_fill_gradient(low = "lightblue", high = "navyblue")
+
+
+sp_f     <- fortify(prec_shp)
+sp_f     <- join(sp_f,prec_shp@data, by="id")
+sp_f$Percent_DVote <- as.numeric(as.character(sp_f$Percent_DVote))
+sp_f <- sp_f[which(sp_f$long < 1e10),]
+dist_shp_f <- fortify(dist_shp)
+
+ballot_by_prec <- ggplot()+ 
+  #geom_polygon(data=dist_shp,aes(long,lat, group = group), fill = NA, col = "red") + 
+  geom_polygon(data = sp_f, aes(long, lat, group = group, fill = (SJR2.Yes)/(SJR2.Yes + SJR2.No))) + 
+  coord_equal() +
+  labs(fill = "Yes on SJR2 as Percentage of Total")+ 
+  geom_polygon(data=dist_shp_f,aes(long,lat, group = group), fill = NA, col = "red") +
+  ggtitle("Percentage of Total")+ 
+  scale_fill_gradient2(midpoint = mean(ball_dat$SJR2.Yes/(ball_dat$SJR2.Yes + ball_dat$SJR2.No)),low = "red", high = "navyblue")
+
+
 
 ```
 
