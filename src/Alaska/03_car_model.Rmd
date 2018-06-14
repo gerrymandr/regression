@@ -324,12 +324,11 @@ r.pred.ler <- c.r.model.ler$fitted.values
 
 #d.pred.sglmm <- c.d.sp.sglmm.fit$fitted.values
 #r.pred.sglmm <- c.r.sp.sglmm.fit$fitted.values
-test <- cbind(d.pred.ler, actual.d)
 
-actual_tab <- cbind(nonb_shp@data$District, actual.d, actual.r)
-actual_tab <- as.data.frame(actual_tab)
-colnames(actual_tab) <- c("District", "actual_d", "actual_r")
-test <- actual_tab %>% group_by(District) %>% dplyr::summarise(dem_votes=sum(actual_d))
+# actual_tab <- cbind(nonb_shp@data$District, actual.d, actual.r)
+# actual_tab <- as.data.frame(actual_tab)
+# colnames(actual_tab) <- c("District", "actual_d", "actual_r")
+# test <- actual_tab %>% group_by(District) %>% dplyr::summarise(dem_votes=sum(actual_d))
 
 actual_tab <- cbind(con_shp@data$District, con_shp@data$D.Dist.Vote, con_shp@data$R.Dist.Vote)
 actual_tab <- as.data.frame(actual_tab)
@@ -377,6 +376,9 @@ rownames(mspe_tab) <- c("Democrat", "Republican")
 
 Bayesian Model Comparison Techniques:
 ```{r}
+#smaller DIC is better
+#higher perc dev expl is better
+#leroux models are much better and explain much of the deviance (than bym)
 # dem ler
 c.d.model.ler$modelfit
 #  rep ler
@@ -385,6 +387,14 @@ c.r.model.ler$modelfit
 c.d.model.bym$modelfit
 #  rep bym
 c.r.model.bym$modelfit
+
+bayes_mod_eval <- rbind(c(c.d.model.bym$modelfit[1], c.d.model.ler$modelfit[1], 
+                          c.r.model.bym$modelfit[1], c.r.model.ler$modelfit[1]),
+                        c(c.d.model.bym$modelfit[7], c.d.model.ler$modelfit[7], 
+                          c.r.model.bym$modelfit[7], c.r.model.ler$modelfit[7]))
+bayes_mod_eval <- as.data.frame(bayes_mod_eval)
+colnames(bayes_mod_eval) <- c("BYM Dem", "Ler Dem", "BYM Rep", "Ler Rep")
+rownames(bayes_mod_eval) <- c("DIC", "perc dev explained")
 
 #c.d.sp.sglmm.fit$dic
 #c.d.sp.sglmm.fit$pD
@@ -408,17 +418,16 @@ mod_dat2 <- cbind(mod_dat2[,9], mod_dat2[,1:8])
 #create function that returns predicted values under counterfactual situation
 pred_val <- function(coeffs.Dem, coeffs.Rep, mod_dat){
   #mod_dat <- mod_dat2
-  #coeffs.Dem[8] <- 0
-  #coeffs.Dem[9] <- 0
-  #coeffs.Rep[8] <- 0
-  #coeffs.Rep[9] <- 0
+  coeffs.Dem[8] <- 0
+  coeffs.Dem[9] <- 0
+  coeffs.Rep[8] <- 0
+  coeffs.Rep[9] <- 0
   
-  #tableDem <- coeffs.Dem[1] + exp(as.matrix(mod_dat[,2:9])%*%coeffs.Dem[2:9])
   tableDem <- as.matrix(mod_dat)%*%coeffs.Dem
   tableDem <- as.numeric(tableDem)
-  tableDem <- exp(tableDem)
-  #tableDem <- cbind(tableDem, demog_vote$District)
-  tableDem <- cbind(tableDem, con_shp@data$District)
+  tableDem <- exp(tableDem) #comment out when not glm
+  tableDem <- cbind(tableDem, demog_vote$District)
+  #tableDem <- cbind(tableDem, con_shp@data$District)
   tableDem <- as.data.frame(tableDem)
   colnames(tableDem) <- c("votes", "District")
   
@@ -426,12 +435,11 @@ pred_val <- function(coeffs.Dem, coeffs.Rep, mod_dat){
   
   v_table_d <- tableDem %>% group_by(District) %>% dplyr::summarise(dem_votes=sum(votes))
   
-  #  tableRep <- as.matrix(mod_dat)%*%exp(coeffs.Rep)
   tableRep <- as.matrix(mod_dat)%*%coeffs.Rep
   tableRep <- as.numeric(tableRep)
-  tableRep <- exp(tableRep)
-  #tableRep <- cbind(tableRep, demog_vote$District)
-  tableRep <- cbind(tableRep, con_shp@data$District)
+  tableRep <- exp(tableRep) #comment out when not glm
+  tableRep <- cbind(tableRep, demog_vote$District)
+  #tableRep <- cbind(tableRep, con_shp@data$District)
   tableRep <- as.data.frame(tableRep)
   colnames(tableRep) <- c("votes", "District")
   
@@ -455,15 +463,15 @@ coeffs.Rep <-summary(c.r.model)$coefficients[,1]
 coeffs.Dem <- as.numeric(coeffs.Dem)
 coeffs.Rep <- as.numeric(coeffs.Rep)
 
-v_table_lm <- pred_val(coeffs.Dem, coeffs.Rep, mod_dat2)
+v_table_lm <- pred_val(coeffs.Dem, coeffs.Rep, mod_dat)
 View(cbind(v_table_lm, actual_tab2))
 
 ######
 #GLM:
 ######
 
-test3 <- coef(c.d.glm_model)
-View(cbind(coeffs.Dem, test3))
+#test3 <- coef(c.d.glm_model)
+#View(cbind(coeffs.Dem, test3))
 
 coeffs.Dem <-summary(c.d.glm_model)$coefficients[,1]
 coeffs.Rep <-summary(c.r.glm_model)$coefficients[,1]
@@ -471,7 +479,7 @@ coeffs.Rep <-summary(c.r.glm_model)$coefficients[,1]
 coeffs.Dem <- as.numeric(coeffs.Dem)
 coeffs.Rep <- as.numeric(coeffs.Rep)
 
-v_table_glm <- pred_val(coeffs.Dem, coeffs.Rep, mod_dat2)
+v_table_glm <- pred_val(coeffs.Dem, coeffs.Rep, mod_dat)
 View(cbind(v_table_glm, actual_tab2))
 
 length(which(v_table_glm[,2] > v_table_glm[,3])) #still only predicts 3
@@ -604,6 +612,10 @@ View(mspe_tab)
 
 write.csv(co_v_table_lm, file = 'C:/Users/ckell/Dropbox/Gerrycamp Regressions Project/Alaska Project/data/mod_fit/co_lin_mod.csv')
 write.csv(co_v_table_glm, file = 'C:/Users/ckell/Dropbox/Gerrycamp Regressions Project/Alaska Project/data/mod_fit/co_glm.csv')
+
+#save workspace
+save.image(file = "C:/Users/ckell/Dropbox/Gerrycamp Regressions Project/Alaska Project/data/mod_fit/final_workspace.Rdata")
+
 ```
 
 
