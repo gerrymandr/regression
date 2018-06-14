@@ -326,10 +326,17 @@ r.pred.ler <- c.r.model.ler$fitted.values
 #r.pred.sglmm <- c.r.sp.sglmm.fit$fitted.values
 test <- cbind(d.pred.ler, actual.d)
 
-#actual_tab <- cbind(nonb_shp@data$District, actual.d, actual.r)
-#actual_tab <- as.data.frame(actual_tab)
-#colnames(actual_tab) <- c("District", "actual_d", "actual_r")
-#test <- actual_tab %>% group_by(District) %>% dplyr::summarise(dem_votes=sum(actual_d))
+actual_tab <- cbind(nonb_shp@data$District, actual.d, actual.r)
+actual_tab <- as.data.frame(actual_tab)
+colnames(actual_tab) <- c("District", "actual_d", "actual_r")
+test <- actual_tab %>% group_by(District) %>% dplyr::summarise(dem_votes=sum(actual_d))
+
+actual_tab <- cbind(con_shp@data$District, con_shp@data$D.Dist.Vote, con_shp@data$R.Dist.Vote)
+actual_tab <- as.data.frame(actual_tab)
+colnames(actual_tab) <- c("District", "actual_d", "actual_r")
+actual_tab2 <- actual_tab %>% group_by(District) %>% dplyr::summarise(dem_votes=sum(actual_d), rep_votes = sum(actual_r))
+
+length(which(actual_tab2[,2] > actual_tab2[,3])) #6 times that the actual_tab was greater (Samir said 5?)
 
 ```
 
@@ -394,16 +401,24 @@ mod_dat <- demog_vote[,c("D.Pres.Vote", "R.Pres.Vote", "sumTOTALPOP", "sumBLACK"
 mod_dat$int <- rep(1, nrow(mod_dat))
 mod_dat <- cbind(mod_dat[,9], mod_dat[,1:8])
 
+mod_dat2 <- con_shp@data[,c("D.Pres.Vote", "R.Pres.Vote", "sumTOTALPOP", "sumBLACK", "sumWHITE", "sumHISPANIC", "IncumD_Pop", "IncumR_Pop")]
+mod_dat2$int <- rep(1, nrow(mod_dat2))
+mod_dat2 <- cbind(mod_dat2[,9], mod_dat2[,1:8])
+
 #create function that returns predicted values under counterfactual situation
 pred_val <- function(coeffs.Dem, coeffs.Rep, mod_dat){
-  coeffs.Dem[8] <- 0
-  coeffs.Dem[9] <- 0
-  coeffs.Rep[8] <- 0
-  coeffs.Rep[9] <- 0
+  #mod_dat <- mod_dat2
+  #coeffs.Dem[8] <- 0
+  #coeffs.Dem[9] <- 0
+  #coeffs.Rep[8] <- 0
+  #coeffs.Rep[9] <- 0
   
+  #tableDem <- coeffs.Dem[1] + exp(as.matrix(mod_dat[,2:9])%*%coeffs.Dem[2:9])
   tableDem <- as.matrix(mod_dat)%*%coeffs.Dem
   tableDem <- as.numeric(tableDem)
-  tableDem <- cbind(tableDem, demog_vote$District)
+  tableDem <- exp(tableDem)
+  #tableDem <- cbind(tableDem, demog_vote$District)
+  tableDem <- cbind(tableDem, con_shp@data$District)
   tableDem <- as.data.frame(tableDem)
   colnames(tableDem) <- c("votes", "District")
   
@@ -411,9 +426,12 @@ pred_val <- function(coeffs.Dem, coeffs.Rep, mod_dat){
   
   v_table_d <- tableDem %>% group_by(District) %>% dplyr::summarise(dem_votes=sum(votes))
   
+  #  tableRep <- as.matrix(mod_dat)%*%exp(coeffs.Rep)
   tableRep <- as.matrix(mod_dat)%*%coeffs.Rep
   tableRep <- as.numeric(tableRep)
-  tableRep <- cbind(tableRep, demog_vote$District)
+  tableRep <- exp(tableRep)
+  #tableRep <- cbind(tableRep, demog_vote$District)
+  tableRep <- cbind(tableRep, con_shp@data$District)
   tableRep <- as.data.frame(tableRep)
   colnames(tableRep) <- c("votes", "District")
   
@@ -437,19 +455,24 @@ coeffs.Rep <-summary(c.r.model)$coefficients[,1]
 coeffs.Dem <- as.numeric(coeffs.Dem)
 coeffs.Rep <- as.numeric(coeffs.Rep)
 
-v_table_lm <- pred_val(coeffs.Dem, coeffs.Rep, mod_dat)
+v_table_lm <- pred_val(coeffs.Dem, coeffs.Rep, mod_dat2)
+View(cbind(v_table_lm, actual_tab2))
 
 ######
 #GLM:
 ######
 
+test3 <- coef(c.d.glm_model)
+View(cbind(coeffs.Dem, test3))
+
 coeffs.Dem <-summary(c.d.glm_model)$coefficients[,1]
 coeffs.Rep <-summary(c.r.glm_model)$coefficients[,1]
 
-coeffs.Dem2 <- as.numeric(coeffs.Dem)
-coeffs.Rep2 <- as.numeric(coeffs.Rep)
+coeffs.Dem <- as.numeric(coeffs.Dem)
+coeffs.Rep <- as.numeric(coeffs.Rep)
 
-v_table_glm <- pred_val(coeffs.Dem, coeffs.Rep, mod_dat)
+v_table_glm <- pred_val(coeffs.Dem, coeffs.Rep, mod_dat2)
+View(cbind(v_table_glm, actual_tab2))
 
 length(which(v_table_glm[,2] > v_table_glm[,3])) #still only predicts 3
 
@@ -581,62 +604,6 @@ View(mspe_tab)
 
 write.csv(co_v_table_lm, file = 'C:/Users/ckell/Dropbox/Gerrycamp Regressions Project/Alaska Project/data/mod_fit/co_lin_mod.csv')
 write.csv(co_v_table_glm, file = 'C:/Users/ckell/Dropbox/Gerrycamp Regressions Project/Alaska Project/data/mod_fit/co_glm.csv')
-```
-
-Create heatmap based off of the % demographic
-```{r}
-heat_dat <- read.csv("C:/Users/ckell/Dropbox/Gerrycamp Regressions Project/Alaska Project/AKDataByPrecinct(1).csv")
-
-heat_dat <- heat_dat[-nrow(heat_dat),] #last row is NA
-
-#change column name for ID variables for which we will join
-colnames(heat_dat)[1] <- "GEOID"
-colnames(prec_shp@data)[3] <- "GEOID"
-
-#change to character variable
-heat_dat$GEOID <- as.character(heat_dat$GEOID)
-prec_shp@data$GEOID <- as.character(prec_shp@data$GEOID)
-
-prec_shp@data$id <- rownames(prec_shp@data)
-prec_shp@data <- left_join(prec_shp@data, heat_dat, by = (GEOID = "GEOID"))
-
-P4S.latlon <- CRS("+proj=longlat +datum=WGS84")
-
-dist_shp <- spTransform(dist_shp, CRS("+init=epsg:3338"))
-prec_shp <- spTransform(prec_shp, CRS("+init=epsg:3338"))
-
-heat_map <- function(heat_dat){
-  #prec_shp@data   <- join(prec_shp@data, data, by="CD_GEOCODI")
-  sp_f     <- fortify(prec_shp)
-  sp_f     <- join(sp_f,prec_shp@data, by="id")
-  sp_f$Percent_DVote <- as.numeric(as.character(sp_f$Percent_DVote))
-  sp_f <- sp_f[which(sp_f$long < 1e10),]
-  
-  dist_shp_f <- fortify(dist_shp)
-  
-  fit_by_prec <- ggplot()+ 
-    #geom_polygon(data=dist_shp,aes(long,lat, group = group), fill = NA, col = "red") + 
-    geom_polygon(data = sp_f, aes(long, lat, group = group, fill = Percent_DVote)) + 
-    coord_equal() +
-    labs(fill = "Percent Dem Vote")+ 
-    geom_polygon(data=dist_shp_f,aes(long,lat, group = group), fill = NA, col = "red") +
-    ggtitle("Percentage of Dem Vote by Precinct")+ scale_fill_gradient2(midpoint = 0.5,low = "red", high = "navyblue")
-  #+theme(text = element_text(size=30))+theme(axis.text.x=element_text(size=20))
-
-  return(fit_by_prec)
-}
-
-
-
-prop_by_prec <- ggplot()+ 
-  #geom_polygon(data=dist_shp,aes(long,lat, group = group), fill = NA, col = "red") + 
-  geom_polygon(data = sp_f, aes(long, lat, group = group, fill = (Reg..D.Voters-Reg..R.Voters)/Reg..Voters)) + 
-  coord_equal() +
-  labs(fill = "Reg Dem - Reg Rep / Total Reg")+ 
-  geom_polygon(data=dist_shp_f,aes(long,lat, group = group), fill = NA, col = "red") +
-  ggtitle("Reg Dem - Reg Rep / Total Reg by Precinct")+
-  scale_fill_gradient(low = "lightblue", high = "navyblue")
-
 ```
 
 
