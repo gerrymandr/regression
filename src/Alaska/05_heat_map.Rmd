@@ -127,9 +127,9 @@ ballot_by_prec <- ggplot()+
   labs(fill = "Yes on SJR2 as Percentage of Total")+ 
   geom_polygon(data=dist_shp_f,aes(long,lat, group = group), fill = NA, col = "red") +
   ggtitle("Percentage of Total")+ 
-  scale_fill_gradient2(midpoint = mean(ball_dat$SJR2.Yes/(ball_dat$SJR2.Yes + ball_dat$SJR2.No)),low = "red", high = "navyblue")
+  scale_fill_gradient2(midpoint = 0.5,low = "red", high = "navyblue")
 
 
-
+#mean(ball_dat$SJR2.Yes/(ball_dat$SJR2.Yes + ball_dat$SJR2.No))
 ```
 
