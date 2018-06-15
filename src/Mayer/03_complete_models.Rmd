@@ -201,7 +201,7 @@ Now, we will fit both the Leroux and the BYM model.
 #started at 3:07pm, finished in  2162.1 seconds
 c.d.model.ler <- S.CARleroux(formula=d.form, data=nonb_shp@data,
                              family="poisson", W=nonb_W, burnin=20000, n.sample=120000, thin=10)
-#started at 3:50pm, started MCMC at 3;58pm
+#started at 3:50pm, started MCMC at 3:58pm, finished in  2595 seconds
 c.r.model.ler <- S.CARleroux(formula=r.form, data=nonb_shp@data,
                              family="poisson", W=nonb_W, burnin=20000, n.sample=120000, thin=10)
 
@@ -214,21 +214,33 @@ c.r.model.ler <- S.CARleroux(formula=r.form, data=nonb_shp@data,
 #r.model.bym <- S.CARbym(formula=r.form, data=no_rep@data,
 #                          family="poisson", W=W_mat_nor, burnin=20000, n.sample=120000, thin=10)
 
+#started at 4:48, 47% at 5:15, finished in  3378.8 seconds
 c.d.model.bym <- S.CARbym(formula=d.form, data=nonb_shp@data,
                              family="poisson", W=nonb_W, burnin=20000, n.sample=120000, thin=10)
 
-
+#started at 5:45pm, finished in  3422 seconds
 c.r.model.bym <- S.CARbym(formula=r.form, data=nonb_shp@data,
                              family="poisson", W=nonb_W, burnin=20000, n.sample=120000, thin=10)
 
 
 #save(c.d.model.ler, #c.r.model.ler, c.d.model.bym, c.r.model.bym, 
-     file = "C:/Users/ckell/Dropbox/Gerrycamp Regressions Project/Mayer Project/prelim_fit/c_d_model_ler.Rdata")
-save(c.r.model.ler, #c.r.model.ler, c.d.model.bym, c.r.model.bym, 
-     file = "C:/Users/ckell/Dropbox/Gerrycamp Regressions Project/Mayer Project/prelim_fit/c_r_model_ler.Rdata")
+     #file = "C:/Users/ckell/Desktop/Summer 2018/MGGG/Regression/data/c_d_model_ler.Rdata")
+#save(c.r.model.ler, #c.r.model.ler, c.d.model.bym, c.r.model.bym, 
+#     file = "C:/Users/ckell/Desktop/Summer 2018/MGGG/Regression/data/c_r_model_ler.Rdata")
+#save(c.d.model.bym, #c.r.model.ler, c.d.model.bym, c.r.model.bym, 
+#     file = "C:/Users/ckell/Desktop/Summer 2018/MGGG/Regression/data/c_d_model_bym.Rdata")
+#save(c.r.model.bym, #c.r.model.ler, c.d.model.bym, c.r.model.bym, 
+     file = "C:/Users/ckell/Desktop/Summer 2018/MGGG/Regression/data/c_r_model_bym.Rdata")
 
 #rm(c.d.model.ler)
-rm(c.r.model.ler)
+#rm(c.r.model.ler)
+#rm(c.d.model.bym)
+#rm(c.r.model.bym)
+
+     load(file = "C:/Users/ckell/Desktop/Summer 2018/MGGG/Regression/data/c_d_model_ler.Rdata")
+     load(file = "C:/Users/ckell/Desktop/Summer 2018/MGGG/Regression/data/c_r_model_ler.Rdata")
+     load(file = "C:/Users/ckell/Desktop/Summer 2018/MGGG/Regression/data/c_d_model_bym.Rdata")
+#     load(file = "C:/Users/ckell/Desktop/Summer 2018/MGGG/Regression/data/c_r_model_bym.Rdata")
 
 ##############
 # Model Evaluation
@@ -273,8 +285,8 @@ c.r.sp.sglmm.fit <- sparse.sglmm(formula = r.form,data=nonb_shp@data, family = p
 #55% ~19m 27s  
 
 #save the models for later reference, takes over an hour to run
-save(c.d.model.ler, c.r.model.ler, c.d.model.bym, c.r.model.bym, 
-     file = "C:/Users/ckell/Dropbox/Gerrycamp Regressions Project/Mayer Project/prelim_fit/prelim_mod_fit2.Rdata")
+#save(c.d.model.ler, c.r.model.ler, c.d.model.bym, c.r.model.bym, 
+#     file = "C:/Users/ckell/Dropbox/Gerrycamp Regressions Project/Mayer Project/prelim_fit/prelim_mod_fit2.Rdata")
 
 #summary(sp.sglmm.fit)
 #d.sp.sglmm.fit$dic
@@ -320,13 +332,14 @@ r.pred.ler <- c.r.model.ler$fitted.values
 # colnames(actual_tab) <- c("District", "actual_d", "actual_r")
 # test <- actual_tab %>% group_by(District) %>% dplyr::summarise(dem_votes=sum(actual_d))
 
-actual_tab <- cbind(con_shp@data$District, con_shp@data$CWSADEM12, con_shp@data$CWSAREP12)
+#78 districts  (uncontested)
+con_shp@data$ASM.x <- as.numeric(con_shp@data$ASM.x)
+actual_tab <- cbind(con_shp@data$ASM.x, con_shp@data$CWSADEM12, con_shp@data$CWSAREP12)
 actual_tab <- as.data.frame(actual_tab)
 colnames(actual_tab) <- c("District", "actual_d", "actual_r")
 actual_tab2 <- actual_tab %>% group_by(District) %>% dplyr::summarise(dem_votes=sum(actual_d), rep_votes = sum(actual_r))
 
-length(which(actual_tab2[,2] > actual_tab2[,3])) #6 times that the actual_tab was greater (Samir said 5?)
-
+length(which(actual_tab2[,2] > actual_tab2[,3])) #20 times that the dem was greater
 ```
 
 Now, I will compute the MSPE for each model.
@@ -397,11 +410,11 @@ rownames(bayes_mod_eval) <- c("DIC", "perc dev explained")
 Creation of counterfactual scenario where there is no incumbent:
 ```{r}
 #First, I will create the model dataframe
-mod_dat <- demog_vote[,c("BBPRESDEM12", "BBPRESREP12", "PERSONS18", "BLACK18", "WHITE18", "HISPANIC18", "IncumD_Pop", "IncumR_Pop")]
+mod_dat <- demog_vote[,c("CPREDEM12", "CPREREP12", "PERSONS18", "BLACK18", "WHITE18", "HISPANIC18", "IncumD_Pop", "IncumR_Pop")]
 mod_dat$int <- rep(1, nrow(mod_dat))
 mod_dat <- cbind(mod_dat[,9], mod_dat[,1:8])
 
-mod_dat2 <- con_shp@data[,c("BBPRESDEM12", "BBPRESREP12", "PERSONS18", "BLACK18", "WHITE18", "HISPANIC18", "IncumD_Pop", "IncumR_Pop")]
+mod_dat2 <- con_shp@data[,c("CPREDEM12", "CPREREP12", "PERSONS18", "BLACK18", "WHITE18", "HISPANIC18", "IncumD_Pop", "IncumR_Pop")]
 mod_dat2$int <- rep(1, nrow(mod_dat2))
 mod_dat2 <- cbind(mod_dat2[,9], mod_dat2[,1:8])
 
@@ -413,10 +426,12 @@ pred_val <- function(coeffs.Dem, coeffs.Rep, mod_dat){
   coeffs.Rep[8] <- 0
   coeffs.Rep[9] <- 0
   
+  #test2 <- data.frame(lapply(test, function(x) as.numeric(as.character(x))))
+  mod_dat  <- test
   tableDem <- as.matrix(mod_dat)%*%coeffs.Dem
   tableDem <- as.numeric(tableDem)
-  tableDem <- exp(tableDem) #comment out when not glm
-  tableDem <- cbind(tableDem, demog_vote$District)
+  #tableDem <- exp(tableDem) #comment out when not glm
+  tableDem <- cbind(tableDem, demog_vote$ASM)
   #tableDem <- cbind(tableDem, con_shp@data$District)
   tableDem <- as.data.frame(tableDem)
   colnames(tableDem) <- c("votes", "District")
@@ -427,8 +442,8 @@ pred_val <- function(coeffs.Dem, coeffs.Rep, mod_dat){
   
   tableRep <- as.matrix(mod_dat)%*%coeffs.Rep
   tableRep <- as.numeric(tableRep)
-  tableRep <- exp(tableRep) #comment out when not glm
-  tableRep <- cbind(tableRep, demog_vote$District)
+  #tableRep <- exp(tableRep) #comment out when not glm
+  tableRep <- cbind(tableRep, demog_vote$ASM)
   #tableRep <- cbind(tableRep, con_shp@data$District)
   tableRep <- as.data.frame(tableRep)
   colnames(tableRep) <- c("votes", "District")
@@ -523,17 +538,18 @@ write.csv(v_table_ler, file = 'C:/Users/ckell/Dropbox/Gerrycamp Regressions Proj
 Now, we will consider county fixed effects in our counterfactual scenario.
 
 ```{r}
-
 #First, I will create the model dataframe
-mod_dat <- demog_vote[,c("BBPRESDEM12", "BBPRESREP12", "PERSONS18", "BLACK18", "WHITE18", "HISPANIC18", "IncumD_Pop", "IncumR_Pop")]
-d_mod_dat <- con_shp@data[,c("CWSADEM12", "BBPRESDEM12", "BBPRESREP12", "PERSONS18", "BLACK18", "WHITE18", "HISPANIC18", "IncumD_Pop", "IncumR_Pop")]
-r_mod_dat <- con_shp@data[,c("CWSAREP12", "BBPRESDEM12", "BBPRESREP12", "PERSONS18", "BLACK18", "WHITE18", "HISPANIC18", "IncumD_Pop", "IncumR_Pop")]
+mod_dat <- demog_vote[,c("CPREDEM12", "CPREREP12", "PERSONS18", "BLACK18", "WHITE18", "HISPANIC18", "IncumD_Pop", "IncumR_Pop")]
+d_mod_dat <- con_shp@data[,c("CWSADEM12", "CPREDEM12", "CPREREP12", "PERSONS18", "BLACK18", "WHITE18", "HISPANIC18", "IncumD_Pop", "IncumR_Pop")]
+r_mod_dat <- con_shp@data[,c("CWSAREP12", "CPREDEM12", "CPREREP12", "PERSONS18", "BLACK18", "WHITE18", "HISPANIC18", "IncumD_Pop", "IncumR_Pop")]
 
+con_shp@data$CON <- as.numeric(as.character(con_shp@data$CON))
+length(unique(con_shp@data$CNTY_FIPS))
 
-mod_mat <- model.matrix( ~ County - 1, data=con_shp@data )
+mod_mat <- model.matrix( ~ CNTY_NAME.x - 1, data=con_shp@data )
 d_mod_dat <- cbind(d_mod_dat, mod_mat)
 r_mod_dat <- cbind(r_mod_dat, mod_mat)
-mod_mat2 <- model.matrix( ~ County - 1, data=demog_vote)
+mod_mat2 <- model.matrix( ~ CNTY_NAME - 1, data=demog_vote)
 mod_dat$int <- rep(1, nrow(mod_dat))
 mod_dat <- cbind(mod_dat[,9], mod_dat[,1:8], mod_mat2)
 colnames(mod_dat)[1]<- c("int")
@@ -559,8 +575,9 @@ c.r.resid.glm <- con_shp@data$CWSAREP12 - c.r.glm_model$fitted.values
 ######
 
 #take out columns with column sum = 0
-test <- mod_dat[,-as.numeric(which(colSums(d_mod_dat) == 0))]
-test <- test[,-32] #also taking out CountyYukon-Koyukuk Census Area`
+#test <- mod_dat[,-as.numeric(which(colSums(d_mod_dat) == 0))]
+
+test <- mod_dat[,-81] #also taking out CountyYukon-Koyukuk Census Area`
 
 coeffs.Dem <-summary(c.d.model)$coefficients[,1]
 coeffs.Rep <-summary(c.r.model)$coefficients[,1]
@@ -604,16 +621,23 @@ write.csv(co_v_table_lm, file = 'C:/Users/ckell/Dropbox/Gerrycamp Regressions Pr
 write.csv(co_v_table_glm, file = 'C:/Users/ckell/Dropbox/Gerrycamp Regressions Project/Mayer Project/data/mod_fit/co_glm.csv')
 
 #save workspace
-save.image(file = "C:/Users/ckell/Dropbox/Gerrycamp Regressions Project/Mayer Project/data/mod_fit/final_workspace.Rdata")
+#
+rm(c.d.model.ler)
+rm(c.r.model.ler)
+rm(c.d.model.bym)
+rm(c.r.model.bym)
+
+save.image(file = "C:/Users/ckell/Desktop/Summer 2018/MGGG/Regression/data/wi.final_workspace.Rdata")
 
 ```
 
+Now, I will print model output for our presentation.
+```{r}
+#Bayesian model comparison
+xtable(bayes_mod_eval)
 
-To Do: 
-* need to also incorporate incumbency
-* cross validation statistics?
-* try including and not the county indicator
-* hypotheticaly if there were no incumbents, fit the model on precincts and then aggregate to the house district level, and see who would win
-** in other words, we want two columns (repub votes and dem votes) for each of the 40 districts - do a group_by
-* Histogram EG and # D Seats
-*Also mark boundary lines of districts
+#mspe
+xtable(mspe_tab)
+
+```
+

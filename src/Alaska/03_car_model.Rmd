@@ -614,7 +614,19 @@ write.csv(co_v_table_lm, file = 'C:/Users/ckell/Dropbox/Gerrycamp Regressions Pr
 write.csv(co_v_table_glm, file = 'C:/Users/ckell/Dropbox/Gerrycamp Regressions Project/Alaska Project/data/mod_fit/co_glm.csv')
 
 #save workspace
-save.image(file = "C:/Users/ckell/Dropbox/Gerrycamp Regressions Project/Alaska Project/data/mod_fit/final_workspace.Rdata")
+#save.image(file = "C:/Users/ckell/Dropbox/Gerrycamp Regressions Project/Alaska Project/data/mod_fit/final_workspace.Rdata")
+
+load(file = "C:/Users/ckell/Dropbox/Gerrycamp Regressions Project/Alaska Project/data/mod_fit/final_workspace.Rdata")
+
+```
+
+Now, I will print model output for our presentation.
+```{r}
+#Bayesian model comparison
+xtable(bayes_mod_eval)
+
+#mspe
+xtable(mspe_tab)
 
 ```
 
