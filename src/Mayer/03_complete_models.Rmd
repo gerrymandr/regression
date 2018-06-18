@@ -125,7 +125,6 @@ c.r.resid.glm <- con_shp@data$CWSAREP12 - c.r.glm_model$fitted.values
 
 #check for overdispersion
 
-
 #negative binomial model
 
 #test for spatial dependence
@@ -157,7 +156,6 @@ moran.mc(x=c.r.resid.glm, listw=W.list.con, nsim=1000, zero.policy = TRUE)
 Need to eliminate the islands with no neighbors
 ```{r}
 no_nb <- which(rowSums(W_mat_con) == 0) #13 with no neighbors
-
 
 nonb_W <- W_mat_con[-no_nb, -no_nb]
 nonb_shp <- con_shp[-no_nb,]
@@ -282,6 +280,7 @@ r.pred.ler <- c.r.model.ler$fitted.values
 con_shp@data$ASM.x <- as.numeric(con_shp@data$ASM.x)
 actual_tab <- cbind(con_shp@data$ASM.x, con_shp@data$CWSADEM12, con_shp@data$CWSAREP12)
 actual_tab <- as.data.frame(actual_tab)
+
 colnames(actual_tab) <- c("District", "actual_d", "actual_r")
 actual_tab2 <- actual_tab %>% group_by(District) %>% dplyr::summarise(dem_votes=sum(actual_d), rep_votes = sum(actual_r))
 
@@ -373,7 +372,6 @@ pred_val <- function(coeffs.Dem, coeffs.Rep, mod_dat, expon){
   coeffs.Rep[9] <- 0
   
   #test2 <- data.frame(lapply(test, function(x) as.numeric(as.character(x))))
-  mod_dat  <- test
   tableDem <- as.matrix(mod_dat)%*%coeffs.Dem
   tableDem <- as.numeric(tableDem)
   if(expon = T){
