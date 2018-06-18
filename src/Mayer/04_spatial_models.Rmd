@@ -125,6 +125,11 @@ con_shp <- ward_shp[-unc,]
 d.form <- c_wsa_dem12 ~ c_pre_dem12 + c_pre_rep12+total_vep +black_vep + hisp_vep + dem_incum + rep_incum 
 r.form <- c_wsa_rep12 ~ c_pre_dem12 + c_pre_rep12+total_vep +black_vep + hisp_vep + dem_incum + rep_incum 
 
+#create linear models
+c.d.model <- lm(formula=d.form, data=con_shp@data)
+c.d.resid.model <- con_shp@data$c_wsa_dem12 - c.d.model$fitted.values
+c.r.model <- lm(formula=r.form, data=con_shp@data)
+c.r.resid.model <- con_shp@data$c_wsa_rep12 - c.r.model$fitted.values
 
 #test for spatial dependence
 #null hypothesis of no spatial autocorrelation (alternative of positive spatial autocorrelation)
