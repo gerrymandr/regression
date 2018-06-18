@@ -1,5 +1,5 @@
 ---
-  title: "CAR Model, Mayer"
+  title: "Non-Spatial Models, Mayer"
 author: "Claire Kelling"
 date: "June 11, 2018"
 output: html_document
@@ -94,7 +94,7 @@ ward_shp@data <- left_join(ward_shp@data, ForR, by = (GEOID = "GEOID"))
 # ward_shp@data$CWSAREP12 <- round(ward_shp@data$CWSAREP12)
 
 ward_shp@data$c_wsa_dem12 <- round(ward_shp@data$c_wsa_dem12)
-ward_shp@data$c_wsa_dem12 <- round(ward_shp@data$c_wsa_dem12)
+ward_shp@data$c_wsa_rep12 <- round(ward_shp@data$c_wsa_rep12)
 
 #we have successfully joined the two datasets
 ```
@@ -104,6 +104,11 @@ Our first step in terms of modeling will be to run our model in a linear model a
 ```{r}
 
 #need to delete Object ID 6481 (outlier)
+range(ward_shp@data$c_wsa_dem12)
+out <- which(ward_shp@data$GEOID == 6481)
+ward_shp <- ward_shp[-out,]
+range(ward_shp@data$c_wsa_dem12)
+range(ward_shp@data$c_wsa_rep12)
 
 #we need to decide variables to use in our analysis
 #colnames(demog_vote)
@@ -114,8 +119,8 @@ unc <- unique(which(ward_shp@data$contested_1 == "0"))
 con_shp <- ward_shp[-unc,]
 
 #non-spatial modeling
-#d.form <- CWSADEM12 ~ CPREDEM12 + CPREREP12+PERSONS18 +BLACK18 + WHITE18 + HISPANIC18+ IncumD_Pop + IncumR_Pop 
-#r.form <- CWSAREP12 ~ CPREDEM12 + CPREREP12+PERSONS18 +BLACK18 + WHITE18 + HISPANIC18+ IncumD_Pop + IncumR_Pop 
+#d.form <- CWSADEM12 ~ CPREDEM12 + CPREREP12+PERSONS18 +BLACK18  + HISPANIC18+ IncumD_Pop + IncumR_Pop 
+#r.form <- CWSAREP12 ~ CPREDEM12 + CPREREP12+PERSONS18 +BLACK18  + HISPANIC18+ IncumD_Pop + IncumR_Pop 
 
 d.form <- c_wsa_dem12 ~ c_pre_dem12 + c_pre_rep12+total_vep +black_vep + hisp_vep + dem_incum + rep_incum 
 r.form <- c_wsa_rep12 ~ c_pre_dem12 + c_pre_rep12+total_vep +black_vep + hisp_vep + dem_incum + rep_incum 
@@ -123,16 +128,16 @@ r.form <- c_wsa_rep12 ~ c_pre_dem12 + c_pre_rep12+total_vep +black_vep + hisp_ve
 
 #create linear models
 c.d.model <- lm(formula=d.form, data=con_shp@data)
-c.d.resid.model <- con_shp@data$CWSADEM12 - c.d.model$fitted.values
+c.d.resid.model <- con_shp@data$c_wsa_dem12 - c.d.model$fitted.values
 c.r.model <- lm(formula=r.form, data=con_shp@data)
-c.r.resid.model <- con_shp@data$CWSAREP12 - c.r.model$fitted.values
+c.r.resid.model <- con_shp@data$c_wsa_rep12 - c.r.model$fitted.values
 
 
 #glm models
 c.d.glm_model <- glm(formula=d.form, family = "poisson", data=con_shp@data)
-c.d.resid.glm <- con_shp@data$CWSADEM12 - c.d.glm_model$fitted.values
+c.d.resid.glm <- con_shp@data$c_wsa_dem12 - c.d.glm_model$fitted.values
 c.r.glm_model <- glm(formula=r.form, family = "poisson", data=con_shp@data)
-c.r.resid.glm <- con_shp@data$CWSAREP12 - c.r.glm_model$fitted.values
+c.r.resid.glm <- con_shp@data$c_wsa_rep12 - c.r.glm_model$fitted.values
 
 
 #test for spatial dependence
@@ -172,20 +177,23 @@ summary(glm.fit)
 #check of dispersion parameter: 659073.1
 sum(residuals(glm.fit, type="pearson")^2)/glm.fit$df.residual
 
-glm.fit.quasi <- glm(formula=d.form, family = "quasipoisson", data=con_shp@data, control = list(maxit = 1000))
-summary(glm.fit.quasi)
+glm.fit.quasi.d <- glm(formula=d.form, family = "quasipoisson", data=con_shp@data, control = list(maxit = 1000))
+c.d.resid.qpois <- con_shp@data$c_wsa_dem12 - glm.fit.quasi.d$fitted.values
+
+glm.fit.quasi.r <- glm(formula=r.form, family = "quasipoisson", data=con_shp@data, control = list(maxit = 1000))
+c.r.resid.qpois <- con_shp@data$c_wsa_rep12 - glm.fit.quasi.r$fitted.values
 
 ### Model Diagnostics
-fitted.mean <- (predict.glm(glm.fit, type='link'))
-fitted.resp <- (predict.glm(glm.fit, type='response'))
-fitted.var <- (con_shp@data$CWSADEM12 - fitted.mean)^2
+fitted.mean <- predict.glm(glm.fit, type='link')
+fitted.resp <- predict.glm(glm.fit, type='response')
+fitted.var <- (con_shp@data$c_wsa_dem12 - fitted.mean)^2
 
 ### Model Comparison: MSE
 # fitted.mean <- (predict.glm(glm.fit.quasi, type='link'))
 # fitted.resp <- (predict.glm(glm.fit.quasi, type='response'))
 # fitted.var <- (full_data$num_downloads - fitted.mean)^2
 
-mse <- sum(fitted.var)/nrow(full_data)
+mse <- sum(fitted.var)/nrow(con_shp@data)
 
 fit.data <- data.frame(fitted.resp, fitted.var, fitted.mean)
 
@@ -201,13 +209,7 @@ ggplot(fit.data, aes(x=log(fit.data[,1])) )+
   xlim(c(0,20))+
   ggtitle(expression('Fitted Mean vs Fitted Variance, Dem Votes') ) #first num is 750 when saving
 
-
-#negative binomial model
-
-
 ```
-
-
 
 
 Need to eliminate the islands with no neighbors
@@ -321,8 +323,8 @@ Now, I will compare the models using mean-squared prediction error.
 
 First, I need to set up predicted for each model and actual for both Democratic and Republican races.
 ```{r}
-actual.d <- nonb_shp@data$CWSADEM12
-actual.r <- nonb_shp@data$CWSAREP12
+actual.d <- nonb_shp@data$c_wsa_dem12
+actual.r <- nonb_shp@data$c_wsa_rep12
 
 d.pred.bym <- c.d.model.bym$fitted.values
 r.pred.bym <- c.r.model.bym$fitted.values
@@ -334,8 +336,8 @@ r.pred.ler <- c.r.model.ler$fitted.values
 #r.pred.sglmm <- c.r.sp.sglmm.fit$fitted.values
 
 #78 districts  (uncontested)
-con_shp@data$ASM.x <- as.numeric(con_shp@data$ASM.x)
-actual_tab <- cbind(con_shp@data$ASM.x, con_shp@data$CWSADEM12, con_shp@data$CWSAREP12)
+con_shp@data$ASM <- as.numeric(con_shp@data$ASM)
+actual_tab <- cbind(con_shp@data$ASM, con_shp@data$c_wsa_dem12, con_shp@data$c_wsa_rep12)
 actual_tab <- as.data.frame(actual_tab)
 
 colnames(actual_tab) <- c("District", "actual_d", "actual_r")
@@ -351,6 +353,8 @@ Now, I will compute the MSPE for each model.
 d.lm.mspe <- mean((c.d.resid.model)^2)
 #glm
 d.glm.mspe <- mean((c.d.resid.glm)^2)
+#quasi pois
+d.qpois.mspe <- mean((c.d.resid.qpois)^2)
 #bym
 d.bym.mspe <- mean((d.pred.bym-actual.d)^2)
 #leroux
@@ -363,6 +367,8 @@ d.ler.mspe <- mean((d.pred.ler-actual.d)^2)
 r.lm.mspe <- mean((c.r.resid.model)^2)
 #glm
 r.glm.mspe <- mean((c.r.resid.glm)^2)
+#quasi pois
+r.qpois.mspe <- mean((c.r.resid.qpois)^2)
 #bym
 r.bym.mspe <- mean((r.pred.bym-actual.r)^2)
 #leroux
@@ -412,11 +418,13 @@ rownames(bayes_mod_eval) <- c("DIC", "perc dev explained")
 Creation of counterfactual scenario where there is no incumbent:
 ```{r}
 #First, I will create the model dataframe
-mod_dat <- demog_vote[,c("CPREDEM12", "CPREREP12", "PERSONS18", "BLACK18", "WHITE18", "HISPANIC18", "IncumD_Pop", "IncumR_Pop")]
+#c_wsa_rep12 ~ c_pre_dem12 + c_pre_rep12+total_vep +black_vep + hisp_vep + dem_incum + rep_incum 
+
+mod_dat <- demog_vote[,c("c_pre_dem12", "c_pre_rep12", "total_vep", "black_vep", "hisp_vep", "dem_incum", "rep_incum")]
 mod_dat$int <- rep(1, nrow(mod_dat))
 mod_dat <- cbind(mod_dat[,9], mod_dat[,1:8])
 
-mod_dat2 <- con_shp@data[,c("CPREDEM12", "CPREREP12", "PERSONS18", "BLACK18", "WHITE18", "HISPANIC18", "IncumD_Pop", "IncumR_Pop")]
+mod_dat2 <- con_shp@data[,c("c_pre_dem12", "c_pre_rep12", "total_vep", "black_vep", "hisp_vep", "dem_incum", "rep_incum")]
 mod_dat2$int <- rep(1, nrow(mod_dat2))
 mod_dat2 <- cbind(mod_dat2[,9], mod_dat2[,1:8])
 
@@ -540,17 +548,18 @@ Now, we will consider county fixed effects in our counterfactual scenario.
 
 ```{r}
 #First, I will create the model dataframe
-mod_dat <- demog_vote[,c("CPREDEM12", "CPREREP12", "PERSONS18", "BLACK18", "WHITE18", "HISPANIC18", "IncumD_Pop", "IncumR_Pop")]
-d_mod_dat <- con_shp@data[,c("CWSADEM12", "CPREDEM12", "CPREREP12", "PERSONS18", "BLACK18", "WHITE18", "HISPANIC18", "IncumD_Pop", "IncumR_Pop")]
-r_mod_dat <- con_shp@data[,c("CWSAREP12", "CPREDEM12", "CPREREP12", "PERSONS18", "BLACK18", "WHITE18", "HISPANIC18", "IncumD_Pop", "IncumR_Pop")]
+mod_dat <- demog_vote[,c("c_pre_dem12", "c_pre_rep12", "total_vep", "black_vep", "hisp_vep", "dem_incum", "rep_incum")]
+d_mod_dat <- con_shp@data[,c("c_wsa_dem12", "c_pre_dem12", "c_pre_rep12", "total_vep", "black_vep", "hisp_vep", "dem_incum", "rep_incum")]
+r_mod_dat <- con_shp@data[,c("c_wsa_rep12", "c_pre_dem12", "c_pre_rep12", "total_vep", "black_vep", "hisp_vep", "dem_incum", "rep_incum")]
 
 con_shp@data$CON <- as.numeric(as.character(con_shp@data$CON))
-length(unique(con_shp@data$CNTY_FIPS))
+#length(unique(con_shp@data$CNTY_FIPS))
+length(unique(con_shp@data$county)) #want 72 unique counties
 
-mod_mat <- model.matrix( ~ CNTY_NAME.x - 1, data=con_shp@data )
+mod_mat <- model.matrix( ~ county - 1, data=con_shp@data )
 d_mod_dat <- cbind(d_mod_dat, mod_mat)
 r_mod_dat <- cbind(r_mod_dat, mod_mat)
-mod_mat2 <- model.matrix( ~ CNTY_NAME - 1, data=demog_vote)
+mod_mat2 <- model.matrix( ~ county - 1, data=demog_vote)
 mod_dat$int <- rep(1, nrow(mod_dat))
 mod_dat <- cbind(mod_dat[,9], mod_dat[,1:8], mod_mat2)
 colnames(mod_dat)[1]<- c("int")
