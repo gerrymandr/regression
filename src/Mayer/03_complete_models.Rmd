@@ -55,7 +55,7 @@ ForR <- read_excel("C:/Users/ckell/Dropbox/Gerrycamp Regressions Project/Mayer P
 
 Now we need to join the spatial polygons and the demographic/voting data.
 ```{r}
-#re-formatting to add the data to the 
+#re-formatting to add the data to the shape file
 ward_shp@data <- ward_shp@data[,-c(14:ncol(ward_shp@data))]
 
 #check classes
@@ -212,112 +212,6 @@ ggplot(fit.data, aes(x=log(fit.data[,1])) )+
 ```
 
 
-Need to eliminate the islands with no neighbors
-```{r}
-no_nb <- which(rowSums(W_mat_con) == 0) #13 with no neighbors
-
-nonb_W <- W_mat_con[-no_nb, -no_nb]
-nonb_shp <- con_shp[-no_nb,]
-
-nonb_Wnb <- poly2nb(nonb_shp, row.names = rownames(nonb_shp@data))
-```
-
-
-Now, we will fit both the Leroux and the BYM model.
-```{r}
-##############
-#Leroux Model
-##############
-#started at 3:07pm, finished in  2162.1 seconds
-c.d.model.ler <- S.CARleroux(formula=d.form, data=nonb_shp@data,
-                             family="poisson", W=nonb_W, burnin=20000, n.sample=120000, thin=10)
-#started at 3:50pm, started MCMC at 3:58pm, finished in  2595 seconds
-c.r.model.ler <- S.CARleroux(formula=r.form, data=nonb_shp@data,
-                             family="poisson", W=nonb_W, burnin=20000, n.sample=120000, thin=10)
-
-##############
-# BYM Model
-##############
-#started at 4:48, 47% at 5:15, finished in  3378.8 seconds
-c.d.model.bym <- S.CARbym(formula=d.form, data=nonb_shp@data,
-                             family="poisson", W=nonb_W, burnin=20000, n.sample=120000, thin=10)
-
-#started at 5:45pm, finished in  3422 seconds
-c.r.model.bym <- S.CARbym(formula=r.form, data=nonb_shp@data,
-                             family="poisson", W=nonb_W, burnin=20000, n.sample=120000, thin=10)
-
-
-#save(c.d.model.ler, #c.r.model.ler, c.d.model.bym, c.r.model.bym, 
-     #file = "C:/Users/ckell/Desktop/Summer 2018/MGGG/Regression/data/c_d_model_ler.Rdata")
-#save(c.r.model.ler, #c.r.model.ler, c.d.model.bym, c.r.model.bym, 
-#     file = "C:/Users/ckell/Desktop/Summer 2018/MGGG/Regression/data/c_r_model_ler.Rdata")
-#save(c.d.model.bym, #c.r.model.ler, c.d.model.bym, c.r.model.bym, 
-#     file = "C:/Users/ckell/Desktop/Summer 2018/MGGG/Regression/data/c_d_model_bym.Rdata")
-#save(c.r.model.bym, #c.r.model.ler, c.d.model.bym, c.r.model.bym, 
-#     file = "C:/Users/ckell/Desktop/Summer 2018/MGGG/Regression/data/c_r_model_bym.Rdata")
-
-#rm(c.d.model.ler)
-#rm(c.r.model.ler)
-#rm(c.d.model.bym)
-#rm(c.r.model.bym)
-
-#     load(file = "C:/Users/ckell/Desktop/Summer 2018/MGGG/Regression/data/c_d_model_ler.Rdata")
-#     load(file = "C:/Users/ckell/Desktop/Summer 2018/MGGG/Regression/data/c_r_model_ler.Rdata")
-#     load(file = "C:/Users/ckell/Desktop/Summer 2018/MGGG/Regression/data/c_d_model_bym.Rdata")
-#     load(file = "C:/Users/ckell/Desktop/Summer 2018/MGGG/Regression/data/c_r_model_bym.Rdata")
-
-##############
-# Model Evaluation
-##############
-#Only using contested precincts:
-#  dem ler
-c.d.model.ler$modelfit
-#  rep ler
-c.r.model.ler$modelfit
-#  dem bym
-c.d.model.bym$modelfit
-#  rep bym
-c.r.model.bym$modelfit
-```
-
-Now, I will also include a model that accounts for spatial autocorrelation.
-```{r}
-#d.sp.sglmm.fit <- sparse.sglmm(formula = d.form,data=no_dem@data, family = poisson, A = W_mat_nod,
-#                             verbose = TRUE) #tune = list(sigma.s = 0.02)
-
-#r.sp.sglmm.fit <- sparse.sglmm(formula = r.form,data=no_rep@data, family = poisson, A = W_mat_nor,
-#                             verbose = TRUE) #tune = list(sigma.s = 0.02)
-
-#rownames(nonb_W) <- NULL
-#c.d.sp.sglmm.fit <- sparse.sglmm(formula = d.form,data=nonb_shp@data, family = poisson, 
-#                                 A = nonb_W, verbose = TRUE) #tune = list(sigma.s = 0.02)
-
-#25 min at 9:43, stuck at 44%, 23m 49s
-
-#c.r.sp.sglmm.fit <- sparse.sglmm(formula = r.form,data=nonb_shp@data, family = poisson, 
-#                                 A = nonb_W, verbose = TRUE) #tune = list(sigma.s = 0.02)
-#11%, 32m 22s remaining at 9:56pm
-#55% ~19m 27s  
-
-#save the models for later reference, takes over an hour to run
-#save(c.d.model.ler, c.r.model.ler, c.d.model.bym, c.r.model.bym, 
-#     file = "C:/Users/ckell/Dropbox/Gerrycamp Regressions Project/Mayer Project/prelim_fit/prelim_mod_fit2.Rdata")
-
-c.d.sp.sglmm.fit$dic
-c.d.sp.sglmm.fit$pD
-
-c.r.sp.sglmm.fit$dic
-c.r.sp.sglmm.fit$pD
-
-```
-
-Now, we need to compare coefficients to see if there was any spatial autocorrelation.
-```{r}
-model.bym$summary.results[,1:3]
-
-summary(c.d.sp.sglmm.fit)
-```
-
 #Model Evaluation
 Now, I will compare the models using mean-squared prediction error.
 
@@ -326,14 +220,6 @@ First, I need to set up predicted for each model and actual for both Democratic 
 actual.d <- nonb_shp@data$c_wsa_dem12
 actual.r <- nonb_shp@data$c_wsa_rep12
 
-d.pred.bym <- c.d.model.bym$fitted.values
-r.pred.bym <- c.r.model.bym$fitted.values
-
-d.pred.ler <- c.d.model.ler$fitted.values
-r.pred.ler <- c.r.model.ler$fitted.values
-
-#d.pred.sglmm <- c.d.sp.sglmm.fit$fitted.values
-#r.pred.sglmm <- c.r.sp.sglmm.fit$fitted.values
 
 #78 districts  (uncontested)
 con_shp@data$ASM <- as.numeric(con_shp@data$ASM)
@@ -355,12 +241,6 @@ d.lm.mspe <- mean((c.d.resid.model)^2)
 d.glm.mspe <- mean((c.d.resid.glm)^2)
 #quasi pois
 d.qpois.mspe <- mean((c.d.resid.qpois)^2)
-#bym
-d.bym.mspe <- mean((d.pred.bym-actual.d)^2)
-#leroux
-d.ler.mspe <- mean((d.pred.ler-actual.d)^2)
-#sglmm
-#d.sglmm.mspe <- mean((d.pred.sglmm - actual.d)^2)
 
 #### Republican Prediction:
 #linear model
@@ -369,50 +249,15 @@ r.lm.mspe <- mean((c.r.resid.model)^2)
 r.glm.mspe <- mean((c.r.resid.glm)^2)
 #quasi pois
 r.qpois.mspe <- mean((c.r.resid.qpois)^2)
-#bym
-r.bym.mspe <- mean((r.pred.bym-actual.r)^2)
-#leroux
-r.ler.mspe <- mean((r.pred.ler-actual.r)^2)
-#sglmm
-#r.sglmm.mspe <- mean((r.pred.sglmm - actual.r)^2)
 
-mspe_tab <- rbind(c(d.lm.mspe, d.glm.mspe, d.bym.mspe, d.ler.mspe),#, d.sglmm.mspe),
-                  c(r.lm.mspe, r.glm.mspe, r.bym.mspe, r.ler.mspe))#, r.sglmm.mspe))
+mspe_tab <- rbind(c(d.lm.mspe, d.glm.mspe),
+                  c(r.lm.mspe, r.glm.mspe))#, r.sglmm.mspe))
 #mspe_tab_count <- mspe_tab
-colnames(mspe_tab) <- c("lin", "glm", "bym", "leroux")#, "sglmm")
+colnames(mspe_tab) <- c("lin", "glm")#, "sglmm")
 rownames(mspe_tab) <- c("Democrat", "Republican")
 
 ```
 
-
-Bayesian Model Comparison Techniques:
-```{r}
-#smaller DIC is better
-#higher perc dev expl is better
-#leroux models are much better and explain much of the deviance (than bym)
-# dem ler
-c.d.model.ler$modelfit
-#  rep ler
-c.r.model.ler$modelfit
-#  dem bym
-c.d.model.bym$modelfit
-#  rep bym
-c.r.model.bym$modelfit
-
-bayes_mod_eval <- rbind(c(c.d.model.bym$modelfit[1], c.d.model.ler$modelfit[1], 
-                          c.r.model.bym$modelfit[1], c.r.model.ler$modelfit[1]),
-                        c(c.d.model.bym$modelfit[7], c.d.model.ler$modelfit[7], 
-                          c.r.model.bym$modelfit[7], c.r.model.ler$modelfit[7]))
-bayes_mod_eval <- as.data.frame(bayes_mod_eval)
-colnames(bayes_mod_eval) <- c("BYM Dem", "Ler Dem", "BYM Rep", "Ler Rep")
-rownames(bayes_mod_eval) <- c("DIC", "perc dev explained")
-
-#c.d.sp.sglmm.fit$dic
-#c.d.sp.sglmm.fit$pD
-
-#c.r.sp.sglmm.fit$dic
-#c.r.sp.sglmm.fit$pD
-```
 
 
 Creation of counterfactual scenario where there is no incumbent:
@@ -420,7 +265,7 @@ Creation of counterfactual scenario where there is no incumbent:
 #First, I will create the model dataframe
 #c_wsa_rep12 ~ c_pre_dem12 + c_pre_rep12+total_vep +black_vep + hisp_vep + dem_incum + rep_incum 
 
-mod_dat <- demog_vote[,c("c_pre_dem12", "c_pre_rep12", "total_vep", "black_vep", "hisp_vep", "dem_incum", "rep_incum")]
+mod_dat <- For_R[,c("c_pre_dem12", "c_pre_rep12", "total_vep", "black_vep", "hisp_vep", "dem_incum", "rep_incum")]
 mod_dat$int <- rep(1, nrow(mod_dat))
 mod_dat <- cbind(mod_dat[,9], mod_dat[,1:8])
 
@@ -442,7 +287,7 @@ pred_val <- function(coeffs.Dem, coeffs.Rep, mod_dat, expon){
   if(expon = T){
     tableDem <- exp(tableDem) #this is when we have a GLM framework
   }
-  tableDem <- cbind(tableDem, demog_vote$ASM)
+  tableDem <- cbind(tableDem, ForR$ASM)
   tableDem <- as.data.frame(tableDem)
   colnames(tableDem) <- c("votes", "District")
   
@@ -455,7 +300,7 @@ pred_val <- function(coeffs.Dem, coeffs.Rep, mod_dat, expon){
   if(expon = T){
     tableRep <- exp(tableRep) #this is when we have a GLM framework 
   }
-  tableRep <- cbind(tableRep, demog_vote$ASM)
+  tableRep <- cbind(tableRep, ForR$ASM)
   tableRep <- as.data.frame(tableRep)
   colnames(tableRep) <- c("votes", "District")
   
@@ -499,56 +344,15 @@ View(cbind(v_table_glm, actual_tab2))
 length(which(v_table_glm[,2] > v_table_glm[,3])) #still only predicts 3
 
 
-######
-#BYM:
-######
-
-coeffs.Dem <- c.d.model.bym$summary.results[1:9,1]
-coeffs.Rep <- c.r.model.bym$summary.results[1:9,1]
-
-coeffs.Dem <- as.numeric(coeffs.Dem)
-coeffs.Rep <- as.numeric(coeffs.Rep)
-
-v_table_bym <- pred_val(coeffs.Dem, coeffs.Rep, mod_dat, T)
-length(which(v_table_bym[,2] > v_table_bym[,3])) #still only predicts 3
-
-######
-#Leroux:
-######
-
-coeffs.Dem <- c.d.model.ler$summary.results[1:9,1]
-coeffs.Rep <- c.r.model.ler$summary.results[1:9,1]
-
-coeffs.Dem <- as.numeric(coeffs.Dem)
-coeffs.Rep <- as.numeric(coeffs.Rep)
-
-v_table_ler <- pred_val(coeffs.Dem, coeffs.Rep, mod_dat, T)
-length(which(v_table_ler[,2] > v_table_ler[,3])) #still only predicts 2
-
-######
-#SGLMM:
-######
-
-# coeffs.Dem <- c.d.sp.sglmm.fit$coefficients
-# coeffs.Rep <- c.r.sp.sglmm.fit$coefficients
-# 
-# coeffs.Dem <- as.numeric(coeffs.Dem)
-# coeffs.Rep <- as.numeric(coeffs.Rep)
-# 
-# v_table_sglmm <- pred_val(coeffs.Dem, coeffs.Rep)
-
 #write.csv(v_table_lm, file = 'C:/Users/ckell/Dropbox/Gerrycamp Regressions Project/Mayer Project/data/mod_fit/lin_mod.csv')
 #write.csv(v_table_glm, file = 'C:/Users/ckell/Dropbox/Gerrycamp Regressions Project/Mayer Project/data/mod_fit/glm.csv')
-#write.csv(v_table_bym, file = 'C:/Users/ckell/Dropbox/Gerrycamp Regressions Project/Mayer Project/data/mod_fit/bym.csv')
-#write.csv(v_table_ler, file = 'C:/Users/ckell/Dropbox/Gerrycamp Regressions Project/Mayer Project/data/mod_fit/ler.csv')
-#write.csv(v_table_sglmm, file = 'C:/Users/ckell/Dropbox/Gerrycamp Regressions Project/Mayer Project/data/mod_fit/sglmm.csv')```
 ```
 
 Now, we will consider county fixed effects in our counterfactual scenario.
 
 ```{r}
 #First, I will create the model dataframe
-mod_dat <- demog_vote[,c("c_pre_dem12", "c_pre_rep12", "total_vep", "black_vep", "hisp_vep", "dem_incum", "rep_incum")]
+mod_dat <- ForR[,c("c_pre_dem12", "c_pre_rep12", "total_vep", "black_vep", "hisp_vep", "dem_incum", "rep_incum")]
 d_mod_dat <- con_shp@data[,c("c_wsa_dem12", "c_pre_dem12", "c_pre_rep12", "total_vep", "black_vep", "hisp_vep", "dem_incum", "rep_incum")]
 r_mod_dat <- con_shp@data[,c("c_wsa_rep12", "c_pre_dem12", "c_pre_rep12", "total_vep", "black_vep", "hisp_vep", "dem_incum", "rep_incum")]
 
@@ -559,7 +363,7 @@ length(unique(con_shp@data$county)) #want 72 unique counties
 mod_mat <- model.matrix( ~ county - 1, data=con_shp@data )
 d_mod_dat <- cbind(d_mod_dat, mod_mat)
 r_mod_dat <- cbind(r_mod_dat, mod_mat)
-mod_mat2 <- model.matrix( ~ county - 1, data=demog_vote)
+mod_mat2 <- model.matrix( ~ county - 1, data=ForR)
 mod_dat$int <- rep(1, nrow(mod_dat))
 mod_dat <- cbind(mod_dat[,9], mod_dat[,1:8], mod_mat2)
 colnames(mod_dat)[1]<- c("int")
@@ -620,22 +424,16 @@ co.r.lm.mspe <- mean((c.r.resid.model)^2)
 co.d.glm.mspe <- mean((c.d.resid.glm)^2)
 co.r.glm.mspe <- mean((c.r.resid.glm)^2)
 
-mspe_tab <- rbind(c(d.lm.mspe, d.glm.mspe, d.bym.mspe, d.ler.mspe, co.d.lm.mspe, co.d.glm.mspe),#, d.sglmm.mspe),
-                  c(r.lm.mspe, r.glm.mspe, r.bym.mspe, r.ler.mspe, co.r.lm.mspe, co.r.glm.mspe))#, r.sglmm.mspe))
+mspe_tab <- rbind(c(d.lm.mspe, d.glm.mspe, co.d.lm.mspe, co.d.glm.mspe),#, d.sglmm.mspe),
+                  c(r.lm.mspe, r.glm.mspe, co.r.lm.mspe, co.r.glm.mspe))#, r.sglmm.mspe))
 #mspe_tab_count <- mspe_tab
-colnames(mspe_tab) <- c("lin", "glm", "bym", "leroux", "county lm", "county glm")#, "sglmm")
+colnames(mspe_tab) <- c("lin", "glm", "county lm", "county glm")#, "sglmm")
 rownames(mspe_tab) <- c("Democrat", "Republican")
 View(mspe_tab)
 
 #write.csv(co_v_table_lm, file = 'C:/Users/ckell/Dropbox/Gerrycamp Regressions Project/Mayer Project/data/mod_fit/co_lin_mod.csv')
 #write.csv(co_v_table_glm, file = 'C:/Users/ckell/Dropbox/Gerrycamp Regressions Project/Mayer Project/data/mod_fit/co_glm.csv')
 
-#save workspace
-#
-rm(c.d.model.ler)
-rm(c.r.model.ler)
-rm(c.d.model.bym)
-rm(c.r.model.bym)
 
 #save.image(file = "C:/Users/ckell/Desktop/Summer 2018/MGGG/Regression/data/wi.final_workspace.Rdata")
 
