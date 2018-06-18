@@ -99,7 +99,7 @@ model.bym.bin <- S.CARbym(formula=form, data=ward_shape@data,
                            family="poisson", W=add_W, burnin=20000, n.sample=120000, thin=10)
 
 #save the models for later reference, takes over an hour to run
-save(model.bym.add, model.bym.bin, model.ler.add, model.ler.bin, file = "C:/Users/ckell/Dropbox/Gerrycamp Regressions Project/Mayer Project/prelim_fit/ward_shape.Rdata")
+#save(model.bym.add, model.bym.bin, model.ler.add, model.ler.bin, file = "C:/Users/ckell/Dropbox/Gerrycamp Regressions Project/Mayer Project/prelim_fit/ward_shape.Rdata")
 
 ##############
 # BYM Model
