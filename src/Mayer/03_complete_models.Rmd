@@ -32,6 +32,7 @@ library(stringi)
 require(rgdal)
 library(ngspatial)
 library(plyr)
+library(readxl)
 
 ```
 
@@ -46,48 +47,54 @@ ward_shp <- readOGR(dsn = "C:/Users/ckell/Dropbox/Gerrycamp Regressions Project/
 
 #voting and demographic data
 #quick fit with demographics
-demog_vote <- read.csv("C:/Users/ckell/Dropbox/Gerrycamp Regressions Project/Mayer Project/data/QuickFitWithDemographics.csv")
+#demog_vote <- read.csv("C:/Users/ckell/Dropbox/Gerrycamp Regressions Project/Mayer Project/data/QuickFitWithDemographics.csv")
+
+ForR <- read_excel("C:/Users/ckell/Dropbox/Gerrycamp Regressions Project/Mayer Project/Data to be Used in R/ForR.xlsx")
 
 ```
 
 Now we need to join the spatial polygons and the demographic/voting data.
 ```{r}
 #re-formatting to add the data to the 
-#View(ward_shp@data)
 ward_shp@data <- ward_shp@data[,-c(14:ncol(ward_shp@data))]
 
 #check classes
 class(ward_shp@data$OBJECTID_1)
 
 #change column name for ID variables for which we will join
-colnames(demog_vote)[2] <- "GEOID"
+#colnames(demog_vote)[2] <- "GEOID"
 colnames(ward_shp@data)[1] <- "GEOID"
+colnames(ForR)[5] <- "GEOID"
 
 #change to character variable
-demog_vote$GEOID <- as.character(demog_vote$GEOID)
+#demog_vote$GEOID <- as.character(demog_vote$GEOID)
 ward_shp@data$GEOID <- as.character(ward_shp@data$GEOID)
+ForR$GEOID <- as.character(ForR$GEOID)
 
 #creating new variable
-demog_vote$IncumD_Pop <- demog_vote$Dincumbent*demog_vote$PERSONS18
-demog_vote$IncumR_Pop <- demog_vote$Rincumbent*demog_vote$PERSONS18
+#demog_vote$IncumD_Pop <- demog_vote$Dincumbent*demog_vote$PERSONS18
+#demog_vote$IncumR_Pop <- demog_vote$Rincumbent*demog_vote$PERSONS18
 
 #join on GEOID
-ward_shp@data <- left_join(ward_shp@data, demog_vote, by = (GEOID = "GEOID"))
+ward_shp@data <- left_join(ward_shp@data, ForR, by = (GEOID = "GEOID"))
 
 #BBPRESDEM12 + BBPRESREP12+PERSONS18 +BLACK18 + WHITE18 + HISPANIC18+ IncumD_Pop + IncumR_Pop
 
-class(ward_shp@data$BBWSADEM12) 
-class(ward_shp@data$BBWSADEM12) 
-class(ward_shp@data$BBPRESDEM12) 
-class(ward_shp@data$BBPRESREP12)
+# class(ward_shp@data$BBWSADEM12) 
+# class(ward_shp@data$BBWSADEM12) 
+# class(ward_shp@data$BBPRESDEM12) 
+# class(ward_shp@data$BBPRESREP12)
 
 
-ward_shp@data$BBWSADEM12 <- round(as.numeric(ward_shp@data$BBWSADEM12))
-ward_shp@data$BBWSADEM12 <- round(as.numeric(ward_shp@data$BBWSADEM12))
-ward_shp@data$BBPRESDEM12 <- round(as.numeric(ward_shp@data$BBPRESDEM12))
-ward_shp@data$BBPRESREP12 <- round(as.numeric(ward_shp@data$BBPRESREP12))
-ward_shp@data$CWSADEM12 <- round(ward_shp@data$CWSADEM12)
-ward_shp@data$CWSAREP12 <- round(ward_shp@data$CWSAREP12)
+# ward_shp@data$BBWSADEM12 <- round(as.numeric(ward_shp@data$BBWSADEM12))
+# ward_shp@data$BBWSADEM12 <- round(as.numeric(ward_shp@data$BBWSADEM12))
+# ward_shp@data$BBPRESDEM12 <- round(as.numeric(ward_shp@data$BBPRESDEM12))
+# ward_shp@data$BBPRESREP12 <- round(as.numeric(ward_shp@data$BBPRESREP12))
+# ward_shp@data$CWSADEM12 <- round(ward_shp@data$CWSADEM12)
+# ward_shp@data$CWSAREP12 <- round(ward_shp@data$CWSAREP12)
+
+ward_shp@data$c_wsa_dem12 <- round(ward_shp@data$c_wsa_dem12)
+ward_shp@data$c_wsa_dem12 <- round(ward_shp@data$c_wsa_dem12)
 
 #we have successfully joined the two datasets
 ```
@@ -99,15 +106,19 @@ Our first step in terms of modeling will be to run our model in a linear model a
 #need to delete Object ID 6481 (outlier)
 
 #we need to decide variables to use in our analysis
-colnames(demog_vote)
+#colnames(demog_vote)
 
 #create a variable for uncontested races
-unc <- unique(which(ward_shp@data$Contested == "U"))
+#unc <- unique(which(ward_shp@data$Contested == "U"))
+unc <- unique(which(ward_shp@data$contested_1 == "0"))
 con_shp <- ward_shp[-unc,]
 
 #non-spatial modeling
-d.form <- CWSADEM12 ~ CPREDEM12 + CPREREP12+PERSONS18 +BLACK18 + WHITE18 + HISPANIC18+ IncumD_Pop + IncumR_Pop #+ County#try adding fixed effects for county
-r.form <- CWSAREP12 ~ CPREDEM12 + CPREREP12+PERSONS18 +BLACK18 + WHITE18 + HISPANIC18+ IncumD_Pop + IncumR_Pop #+ County#try adding fixed effects for county
+#d.form <- CWSADEM12 ~ CPREDEM12 + CPREREP12+PERSONS18 +BLACK18 + WHITE18 + HISPANIC18+ IncumD_Pop + IncumR_Pop 
+#r.form <- CWSAREP12 ~ CPREDEM12 + CPREREP12+PERSONS18 +BLACK18 + WHITE18 + HISPANIC18+ IncumD_Pop + IncumR_Pop 
+
+d.form <- c_wsa_dem12 ~ c_pre_dem12 + c_pre_rep12+total_vep +black_vep + hisp_vep + dem_incum + rep_incum 
+r.form <- c_wsa_rep12 ~ c_pre_dem12 + c_pre_rep12+total_vep +black_vep + hisp_vep + dem_incum + rep_incum 
 
 
 #create linear models
@@ -123,9 +134,6 @@ c.d.resid.glm <- con_shp@data$CWSADEM12 - c.d.glm_model$fitted.values
 c.r.glm_model <- glm(formula=r.form, family = "poisson", data=con_shp@data)
 c.r.resid.glm <- con_shp@data$CWSAREP12 - c.r.glm_model$fitted.values
 
-#check for overdispersion
-
-#negative binomial model
 
 #test for spatial dependence
 #null hypothesis of no spatial autocorrelation (alternative of positive spatial autocorrelation)
@@ -151,6 +159,55 @@ moran.mc(x=c.r.resid.glm, listw=W.list.con, nsim=1000, zero.policy = TRUE)
 #if p-value < 0.05, we conclude there is positve spatial autocorrelation
 
 ```
+
+
+Check for overdispersion and implement 
+```{r}
+#check for overdispersion
+glm.fit <- glm(formula=d.form, family = "poisson", data=con_shp@data, control = list(maxit = 1000))
+summary(glm.fit)
+
+# Possible Overdispersion;
+# Check of Overdispersion
+#check of dispersion parameter: 659073.1
+sum(residuals(glm.fit, type="pearson")^2)/glm.fit$df.residual
+
+glm.fit.quasi <- glm(formula=d.form, family = "quasipoisson", data=con_shp@data, control = list(maxit = 1000))
+summary(glm.fit.quasi)
+
+### Model Diagnostics
+fitted.mean <- (predict.glm(glm.fit, type='link'))
+fitted.resp <- (predict.glm(glm.fit, type='response'))
+fitted.var <- (con_shp@data$CWSADEM12 - fitted.mean)^2
+
+### Model Comparison: MSE
+# fitted.mean <- (predict.glm(glm.fit.quasi, type='link'))
+# fitted.resp <- (predict.glm(glm.fit.quasi, type='response'))
+# fitted.var <- (full_data$num_downloads - fitted.mean)^2
+
+mse <- sum(fitted.var)/nrow(full_data)
+
+fit.data <- data.frame(fitted.resp, fitted.var, fitted.mean)
+
+
+ggplot(fit.data, aes(x=log(fit.data[,1])) )+
+  geom_point(aes(y=log(fit.data[,2]), colour ="black"), size=3)+
+  geom_abline(slope = 1, intercept = 0, color="red") +
+  theme( legend.position= "none", axis.text=element_text(size=20), axis.title=element_text(size=20),
+         text=element_text(size=18) ) +
+  xlab(expression( 'Standardized '(hat(mu)) ) ) +
+  scale_y_continuous(expression( 'Standardized '(y-hat(mu))^2 ) ) +
+  scale_colour_identity() +
+  xlim(c(0,20))+
+  ggtitle(expression('Fitted Mean vs Fitted Variance, Dem Votes') ) #first num is 750 when saving
+
+
+#negative binomial model
+
+
+```
+
+
 
 
 Need to eliminate the islands with no neighbors
