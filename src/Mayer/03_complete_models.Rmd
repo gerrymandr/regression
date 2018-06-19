@@ -233,25 +233,25 @@ Now, I will compute the MSPE for each model.
 ```{r}
 #### Democratic Prediction:
 #linear model
-d.lm.mspe <- mean((c.d.resid.model)^2)
+d.lm.mspe <- sqrt(mean((c.d.resid.model)^2))
 #glm
-d.glm.mspe <- mean((c.d.resid.glm)^2)
+d.glm.mspe <- sqrt(mean((c.d.resid.glm)^2))
 #quasi pois
-d.qpois.mspe <- mean((c.d.resid.qpois)^2) #this is the same as this model mainly adjusts the significance
+d.qpois.mspe <- sqrt(mean((c.d.resid.qpois)^2)) #this is the same as this model mainly adjusts the significance
 
 #### Republican Prediction:
 #linear model
-r.lm.mspe <- mean((c.r.resid.model)^2)
+r.lm.mspe <- sqrt(mean((c.r.resid.model)^2))
 #glm
-r.glm.mspe <- mean((c.r.resid.glm)^2)
+r.glm.mspe <- sqrt(mean((c.r.resid.glm)^2))
 #quasi pois
-r.qpois.mspe <- mean((c.r.resid.qpois)^2)
+r.qpois.mspe <- sqrt(mean((c.r.resid.qpois)^2))
 
-mspe_tab <- rbind(c(d.lm.mspe, d.glm.mspe),
+rmspe_tab <- rbind(c(d.lm.mspe, d.glm.mspe),
                   c(r.lm.mspe, r.glm.mspe))#, r.sglmm.mspe))
 #mspe_tab_count <- mspe_tab
-colnames(mspe_tab) <- c("lin", "glm")#, "sglmm")
-rownames(mspe_tab) <- c("Democrat", "Republican")
+colnames(rmspe_tab) <- c("lin", "glm")#, "sglmm")
+rownames(rmspe_tab) <- c("Democrat", "Republican")
 
 ```
 
@@ -281,7 +281,7 @@ pred_val <- function(coeffs.Dem, coeffs.Rep, mod_dat, expon){
   #test2 <- data.frame(lapply(test, function(x) as.numeric(as.character(x))))
   tableDem <- as.matrix(mod_dat)%*%coeffs.Dem
   tableDem <- as.numeric(tableDem)
-  if(expon = T){
+  if(expon == T){
     tableDem <- exp(tableDem) #this is when we have a GLM framework
   }
   tableDem <- cbind(tableDem, ForR$ASM)
