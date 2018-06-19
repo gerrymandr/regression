@@ -46,7 +46,7 @@ prec_shp <- readOGR(dsn = "C:/Users/ckell/Dropbox/Gerrycamp Regressions Project/
 dist_shp <- readOGR(dsn = "C:/Users/ckell/Dropbox/Gerrycamp Regressions Project/Alaska Project/data/2013-HD-ProclamationPlan", layer = "2013ProclamationPlan")
 
 #voting and demographic data
-demog_vote <- read.csv("C:/Users/ckell/Dropbox/Gerrycamp Regressions Project/Alaska Project/AKDataByPrecinct.csv")
+#demog_vote <- read.csv("C:/Users/ckell/Dropbox/Gerrycamp Regressions Project/Alaska Project/AKDataByPrecinct.csv")
 
 #redo shape file from github source
 # https://github.com/aaron-strauss/precinct-shapefiles/blob/master/ak/2012_ak_precincts.zip
@@ -81,29 +81,26 @@ P4S.latlon <- CRS("+proj=longlat +datum=WGS84")
 dist_shp <- spTransform(dist_shp, CRS("+init=epsg:3338"))
 prec_shp <- spTransform(prec_shp, CRS("+init=epsg:3338"))
 
-heat_map <- function(heat_dat){
-  #prec_shp@data   <- join(prec_shp@data, data, by="CD_GEOCODI")
-  sp_f     <- fortify(prec_shp)
-  sp_f     <- join(sp_f,prec_shp@data, by="id")
-  sp_f$Percent_DVote <- as.numeric(as.character(sp_f$Percent_DVote))
-  sp_f <- sp_f[which(sp_f$long < 1e10),]
-  
-  dist_shp_f <- fortify(dist_shp)
-  
-  fit_by_prec <- ggplot()+ 
-    #geom_polygon(data=dist_shp,aes(long,lat, group = group), fill = NA, col = "red") + 
-    geom_polygon(data = sp_f, aes(long, lat, group = group, fill = Percent_DVote)) + 
-    coord_equal() +
-    labs(fill = "Percent Dem Vote")+ 
-    geom_polygon(data=dist_shp_f,aes(long,lat, group = group), fill = NA, col = "red") +
-    ggtitle("Percentage of Dem Vote by Precinct")+ scale_fill_gradient2(midpoint = 0.5,low = "red", high = "navyblue")
-  #+theme(text = element_text(size=30))+theme(axis.text.x=element_text(size=20))
+## Plot for Proportion
+#prec_shp@data   <- join(prec_shp@data, data, by="CD_GEOCODI")
+sp_f     <- fortify(prec_shp)
+sp_f     <- join(sp_f,prec_shp@data, by="id")
+sp_f$Percent_DVote <- as.numeric(as.character(sp_f$Percent_DVote))
+sp_f <- sp_f[which(sp_f$long < 1e10),]
 
-  return(fit_by_prec)
-}
+dist_shp_f <- fortify(dist_shp)
+
+fit_by_prec <- ggplot()+ 
+  #geom_polygon(data=dist_shp,aes(long,lat, group = group), fill = NA, col = "red") + 
+  geom_polygon(data = sp_f, aes(long, lat, group = group, fill = Percent_DVote)) + 
+  coord_equal() +
+  labs(fill = "Percent Dem Vote")+ 
+  geom_polygon(data=dist_shp_f,aes(long,lat, group = group), fill = NA, col = "red") +
+  ggtitle("Percentage of Dem Vote by Precinct")+ scale_fill_gradient2(midpoint = 0.5,low = "red", high = "navyblue")
+#+theme(text = element_text(size=30))+theme(axis.text.x=element_text(size=20))
 
 
-
+## Plot for Proportion
 prop_by_prec <- ggplot()+ 
   #geom_polygon(data=dist_shp,aes(long,lat, group = group), fill = NA, col = "red") + 
   geom_polygon(data = sp_f, aes(long, lat, group = group, fill = (Reg..D.Voters-Reg..R.Voters)/Reg..Voters)) + 
@@ -120,6 +117,8 @@ sp_f$Percent_DVote <- as.numeric(as.character(sp_f$Percent_DVote))
 sp_f <- sp_f[which(sp_f$long < 1e10),]
 dist_shp_f <- fortify(dist_shp)
 
+
+#Plot for ballot issue
 ballot_by_prec <- ggplot()+ 
   #geom_polygon(data=dist_shp,aes(long,lat, group = group), fill = NA, col = "red") + 
   geom_polygon(data = sp_f, aes(long, lat, group = group, fill = (SJR2.Yes)/(SJR2.Yes + SJR2.No))) + 
@@ -129,7 +128,96 @@ ballot_by_prec <- ggplot()+
   ggtitle("Percentage of Total")+ 
   scale_fill_gradient2(midpoint = 0.5,low = "red", high = "navyblue")
 
+```
 
-#mean(ball_dat$SJR2.Yes/(ball_dat$SJR2.Yes + ball_dat$SJR2.No))
+Make the plot into a function
+```{r}
+
+plot_fun <- function(dat, var_name, mid, title){
+  plot_by_prec <- ggplot()+ 
+    #geom_polygon(data=dist_shp,aes(long,lat, group = group), fill = NA, col = "red") + 
+    geom_polygon(data = dat, 
+                 aes(long, lat, group = group, fill = var_name)) + 
+    coord_equal() +
+    labs(fill = title)+ 
+    geom_polygon(data=dist_shp_f,aes(long,lat, group = group), fill = NA, col = "red") +
+    ggtitle(title)+ 
+    scale_fill_gradient2(midpoint = mid,low = "red", high = "navyblue")
+}
+
+```
+
+
+Now, we want to zoom in to Anchorage
+```{r}
+#these are the districts for Anchorage, possibly including 16:28
+anch_dist <- 16:26
+
+#length(unique(sp_f$District))
+#head(unique(sp_f$District))
+#class(sp_f$District)
+
+sp_anch <- sp_f[which(sp_f$District %in% anch_dist),]
+dist_shp_f$dist <- as.numeric(dist_shp_f$id) +1
+dist_shp_anch <- dist_shp_f[which(dist_shp_f$dist %in% anch_dist),]
+
+#unique(dist_shp_f$id)
+#unique(sp_f$District)
+
+fit_by_anch <- ggplot()+ 
+  geom_polygon(data = sp_anch, aes(long, lat, group = group, fill = Percent_DVote)) + 
+  coord_equal() +
+  labs(fill = "Percent Dem Vote")+ 
+  geom_polygon(data=dist_shp_anch,aes(long,lat, group = group), fill = NA, col = "red") +
+  ggtitle("Percentage of Dem Vote by Precinct")+ scale_fill_gradient2(midpoint = 0.5,low = "red", high = "navyblue")
+```
+
+Plotting district Alignments
+```{r}
+dist_dat <- read.csv("C:/Users/ckell/Dropbox/Gerrycamp Regressions Project/Alaska Project/data/district_alignments.csv")
+colnames(dist_dat)[1] <- "dist"
+
+dist_shp_f <- left_join(dist_shp_f, dist_dat)
+
+
+fit_dist <- ggplot()+ 
+  #geom_polygon(data=dist_shp,aes(long,lat, group = group), fill = NA, col = "red") + 
+  geom_polygon(data = dist_shp_f, aes(long, lat, group = group, fill = Prob..Dem.)) + 
+  coord_equal() +
+  labs(fill = "Prob Dem")+ 
+  geom_polygon(data=dist_shp_f,aes(long,lat, group = group), fill = NA, col = "white") +
+  ggtitle("Prob Dem")+ scale_fill_gradient2(midpoint = 0.5,low = "red", high = "navyblue")
+
+fit_dist_anch <- ggplot()+ 
+  #geom_polygon(data=dist_shp,aes(long,lat, group = group), fill = NA, col = "red") + 
+  geom_polygon(data = dist_shp_f[which(dist_shp_f$dist %in% anch_dist),], aes(long, lat, group = group, fill = Prob..Dem.)) + 
+  coord_equal() +
+  labs(fill = "Prob Dem")+ 
+  geom_polygon(data=dist_shp_f[which(dist_shp_f$dist %in% anch_dist),],aes(long,lat, group = group), fill = NA, col = "white") +
+  ggtitle("Prob Dem")+ scale_fill_gradient2(midpoint = 0.5,low = "red", high = "navyblue")
+
+range(dist_shp_f$Prob..Dem.)
+```
+
+Starting with attempt to add Google Maps in the background
+```{r}
+library(ggmap) 
+library(ggplot2)
+library(ggmap)
+library(maps)
+library(mapdata)
+
+
+lnd <- SpatialPolygonsDataFrame(Sr = spTransform(prec_shp, CRSobj = CRS("+init=epsg:4326")), 
+    data = prec_shp@data)
+b <- bbox(lnd)
+lnd.b1 <- ggmap(get_map(location = b))
+
+library(RgoogleMaps)
+
+test <- ggooglemap("alaska")
+
+states <- map_data("state")
+
 ```
 
