@@ -10,7 +10,7 @@ wasted.vote <- function(x,y){
     }
 }
 
-efficency.gap <- function(df){
+efficiency.gap <- function(df){
   wasted.d.votes = Vectorize(wasted.vote)(df$Dem..Votes, df$Rep..Votes) #compute total wasted dem votes
   wasted.r.votes = Vectorize(wasted.vote)(df$Rep..Votes, df$Dem..Votes) #compute total wasted rep votes
   return(sum(wasted.d.votes-wasted.r.votes)/sum(df)) #sum the difference and divide by total number of votes
