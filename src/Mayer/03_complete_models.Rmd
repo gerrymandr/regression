@@ -227,6 +227,14 @@ actual_tab2 <- actual_tab %>% group_by(District) %>% dplyr::summarise(dem_votes=
 
 length(which(actual_tab2[,2] > actual_tab2[,3])) #17 times that the dem was greater
 length(which(actual_tab2[,3] > actual_tab2[,2])) #17 times that the dem was greater
+
+con_actual_tab <- cbind(ForR$assembly, ForR$c_wsa_dem12, ForR$c_wsa_rep12)
+con_actual_tab <- as.data.frame(con_actual_tab)
+
+colnames(con_actual_tab) <- c("District", "actual_d", "actual_r")
+con_actual_tab2 <- con_actual_tab %>% group_by(District) %>% dplyr::summarise(dem_votes=sum(actual_d), rep_votes = sum(actual_r))
+
+
 ```
 
 Now, I will compute the MSPE for each model.
@@ -273,10 +281,10 @@ mod_dat2 <- cbind(mod_dat2[,8], mod_dat2[,1:7])
 #create function that returns predicted values under counterfactual situation
 pred_val <- function(coeffs.Dem, coeffs.Rep, mod_dat, expon){
   #mod_dat <- mod_dat2
+  coeffs.Dem[7] <- 0
   coeffs.Dem[8] <- 0
-  coeffs.Dem[9] <- 0
+  coeffs.Rep[7] <- 0
   coeffs.Rep[8] <- 0
-  coeffs.Rep[9] <- 0
   
   #test2 <- data.frame(lapply(test, function(x) as.numeric(as.character(x))))
   tableDem <- as.matrix(mod_dat)%*%coeffs.Dem
@@ -284,7 +292,7 @@ pred_val <- function(coeffs.Dem, coeffs.Rep, mod_dat, expon){
   if(expon == T){
     tableDem <- exp(tableDem) #this is when we have a GLM framework
   }
-  tableDem <- cbind(tableDem, ForR$ASM)
+  tableDem <- cbind(tableDem, ForR$assembly)
   tableDem <- as.data.frame(tableDem)
   colnames(tableDem) <- c("votes", "District")
   
@@ -294,10 +302,10 @@ pred_val <- function(coeffs.Dem, coeffs.Rep, mod_dat, expon){
   
   tableRep <- as.matrix(mod_dat)%*%coeffs.Rep
   tableRep <- as.numeric(tableRep)
-  if(expon = T){
+  if(expon == T){
     tableRep <- exp(tableRep) #this is when we have a GLM framework 
   }
-  tableRep <- cbind(tableRep, ForR$ASM)
+  tableRep <- cbind(tableRep, ForR$assembly)
   tableRep <- as.data.frame(tableRep)
   colnames(tableRep) <- c("votes", "District")
   
@@ -322,7 +330,8 @@ coeffs.Dem <- as.numeric(coeffs.Dem)
 coeffs.Rep <- as.numeric(coeffs.Rep)
 
 v_table_lm <- pred_val(coeffs.Dem, coeffs.Rep, mod_dat, F)
-View(cbind(v_table_lm, actual_tab2))
+View(cbind(v_table_lm, con_actual_tab2))
+length(which(v_table_lm[,2] > v_table_lm[,3])) #predicts 41
 
 ######
 #GLM:
@@ -336,9 +345,9 @@ coeffs.Dem <- as.numeric(coeffs.Dem)
 coeffs.Rep <- as.numeric(coeffs.Rep)
 
 v_table_glm <- pred_val(coeffs.Dem, coeffs.Rep, mod_dat, T)
-View(cbind(v_table_glm, actual_tab2))
+View(cbind(v_table_glm, con_actual_tab2))
 
-length(which(v_table_glm[,2] > v_table_glm[,3])) #still only predicts 3
+length(which(v_table_glm[,2] > v_table_glm[,3])) #still only predicts 37
 
 
 #write.csv(v_table_lm, file = 'C:/Users/ckell/Dropbox/Gerrycamp Regressions Project/Mayer Project/data/mod_fit/lin_mod.csv')
@@ -353,33 +362,33 @@ mod_dat <- ForR[,c("c_pre_dem12", "c_pre_rep12", "total_vep", "black_vep", "hisp
 d_mod_dat <- con_shp@data[,c("c_wsa_dem12", "c_pre_dem12", "c_pre_rep12", "total_vep", "black_vep", "hisp_vep", "dem_incum", "rep_incum")]
 r_mod_dat <- con_shp@data[,c("c_wsa_rep12", "c_pre_dem12", "c_pre_rep12", "total_vep", "black_vep", "hisp_vep", "dem_incum", "rep_incum")]
 
-con_shp@data$CON <- as.numeric(as.character(con_shp@data$CON))
-#length(unique(con_shp@data$CNTY_FIPS))
-length(unique(con_shp@data$county)) #want 72 unique counties
+#con_shp@data$CON <- as.numeric(as.character(con_shp@data$CON))
+length(unique(con_shp@data$county))
+#length(unique(con_shp@data$county)) #want 72 unique counties
 
 mod_mat <- model.matrix( ~ county - 1, data=con_shp@data )
 d_mod_dat <- cbind(d_mod_dat, mod_mat)
 r_mod_dat <- cbind(r_mod_dat, mod_mat)
 mod_mat2 <- model.matrix( ~ county - 1, data=ForR)
 mod_dat$int <- rep(1, nrow(mod_dat))
-mod_dat <- cbind(mod_dat[,9], mod_dat[,1:8], mod_mat2)
+mod_dat <- cbind(mod_dat[,8], mod_dat[,1:7], mod_mat2)
 colnames(mod_dat)[1]<- c("int")
 
 #non-spatial modeling
-d.form <- CWSADEM12 ~ .
-r.form <- CWSAREP12 ~ .
+d.form <- c_wsa_dem12 ~ .
+r.form <- c_wsa_rep12 ~ .
 
 c.d.model <- lm(formula=d.form, data=d_mod_dat)
-c.d.resid.model <- con_shp@data$CWSADEM12 - c.d.model$fitted.values
+c.d.resid.model <- con_shp@data$c_wsa_dem12 - c.d.model$fitted.values
 c.r.model <- lm(formula=r.form, data=r_mod_dat)
-c.r.resid.model <- con_shp@data$CWSAREP12 - c.r.model$fitted.values
+c.r.resid.model <- con_shp@data$c_wsa_rep12 - c.r.model$fitted.values
 
 #glm model
 
 c.d.glm_model <- glm(formula=d.form, family = "poisson", data=d_mod_dat)
-c.d.resid.glm <- con_shp@data$CWSADEM12 - c.d.glm_model$fitted.values
+c.d.resid.glm <- con_shp@data$c_wsa_dem12 - c.d.glm_model$fitted.values
 c.r.glm_model <- glm(formula=r.form, family = "poisson", data=r_mod_dat)
-c.r.resid.glm <- con_shp@data$CWSAREP12 - c.r.glm_model$fitted.values
+c.r.resid.glm <- con_shp@data$c_wsa_rep12 - c.r.glm_model$fitted.values
 
 ######
 #Linear Model:
@@ -388,7 +397,7 @@ c.r.resid.glm <- con_shp@data$CWSAREP12 - c.r.glm_model$fitted.values
 #take out columns with column sum = 0
 #co_dat <- mod_dat[,-as.numeric(which(colSums(d_mod_dat) == 0))]
 
-co_dat <- mod_dat[,-81] #also taking out CountyYukon-Koyukuk Census Area`
+co_dat <- mod_dat[,-80] #also taking out countyWood 
 
 coeffs.Dem <-summary(c.d.model)$coefficients[,1]
 coeffs.Rep <-summary(c.r.model)$coefficients[,1]
@@ -397,7 +406,7 @@ coeffs.Dem <- as.numeric(coeffs.Dem)
 coeffs.Rep <- as.numeric(coeffs.Rep)
 
 co_v_table_lm <- pred_val(coeffs.Dem, coeffs.Rep, co_dat, F)
-length(which(co_v_table_lm[,2] > co_v_table_lm[,3])) #still only predicts 4
+length(which(co_v_table_lm[,2] > co_v_table_lm[,3])) #predicts 44
 
 ######
 #GLM:
@@ -411,15 +420,15 @@ coeffs.Rep <- as.numeric(coeffs.Rep)
 
 co_v_table_glm <- pred_val(coeffs.Dem, coeffs.Rep, co_dat, T)
 
-length(which(co_v_table_glm[,2] > co_v_table_glm[,3])) #still only predicts 4
+length(which(co_v_table_glm[,2] > co_v_table_glm[,3])) #predicts 43
 
 
 #linear model
-co.d.lm.mspe <- mean((c.d.resid.model)^2)
-co.r.lm.mspe <- mean((c.r.resid.model)^2)
+co.d.lm.mspe <- sqrt(mean((c.d.resid.model)^2))
+co.r.lm.mspe <- sqrt(mean((c.r.resid.model)^2))
 #glm
-co.d.glm.mspe <- mean((c.d.resid.glm)^2)
-co.r.glm.mspe <- mean((c.r.resid.glm)^2)
+co.d.glm.mspe <- sqrt(mean((c.d.resid.glm)^2))
+co.r.glm.mspe <- sqrt(mean((c.r.resid.glm)^2))
 
 mspe_tab <- rbind(c(d.lm.mspe, d.glm.mspe, co.d.lm.mspe, co.d.glm.mspe),#, d.sglmm.mspe),
                   c(r.lm.mspe, r.glm.mspe, co.r.lm.mspe, co.r.glm.mspe))#, r.sglmm.mspe))
@@ -439,7 +448,7 @@ View(mspe_tab)
 Now, I will print model output for our presentation.
 ```{r}
 #Bayesian model comparison
-xtable(bayes_mod_eval)
+#xtable(bayes_mod_eval)
 
 #mspe
 xtable(mspe_tab)
