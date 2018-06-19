@@ -9,6 +9,7 @@ editor_options:
   
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+options(scipen=999)
 ```
 
 The purpose of this code is to fit the CAR model to voting data, aggregated by ward. We only have Census data by district and/or block group so this presents a spatial mismatch file. 
@@ -109,6 +110,9 @@ out <- which(ward_shp@data$GEOID == 6481)
 ward_shp <- ward_shp[-out,]
 range(ward_shp@data$c_wsa_dem12)
 range(ward_shp@data$c_wsa_rep12)
+
+ForR <- ForR[-out,]
+range(ForR$c_wsa_dem12)
 
 #we need to decide variables to use in our analysis
 #colnames(demog_vote)
@@ -313,7 +317,7 @@ pred_val <- function(coeffs.Dem, coeffs.Rep, mod_dat, expon){
   
   v_table <- left_join(v_table_d, v_table_r)
   
-  colnames(v_table) <- c("District", "Dem. Votes", "Rep. Votes")
+  colnames(v_table) <- c("District", "Dem.Votes", "Rep.Votes")
   v_table2 <- v_table
   return(v_table)
 }
@@ -357,6 +361,8 @@ length(which(v_table_glm[,2] > v_table_glm[,3])) #still only predicts 37
 Now, we will consider county fixed effects in our counterfactual scenario.
 
 ```{r}
+#I believe there is an error in District 53
+
 #First, I will create the model dataframe
 mod_dat <- ForR[,c("c_pre_dem12", "c_pre_rep12", "total_vep", "black_vep", "hisp_vep", "dem_incum", "rep_incum")]
 d_mod_dat <- con_shp@data[,c("c_wsa_dem12", "c_pre_dem12", "c_pre_rep12", "total_vep", "black_vep", "hisp_vep", "dem_incum", "rep_incum")]
@@ -419,7 +425,7 @@ coeffs.Dem <- as.numeric(coeffs.Dem)
 coeffs.Rep <- as.numeric(coeffs.Rep)
 
 co_v_table_glm <- pred_val(coeffs.Dem, coeffs.Rep, co_dat, T)
-
+View(cbind(co_v_table_glm, con_actual_tab2))
 length(which(co_v_table_glm[,2] > co_v_table_glm[,3])) #predicts 43
 
 
@@ -454,12 +460,34 @@ Now, I will print model output for our presentation.
 xtable(mspe_tab)
 
 
-write.csv(actual_tab2, file = 'C:/Users/ckell/Dropbox/Gerrycamp Regressions Project/Mayer Project/data/count_by_dist.csv')
+#write.csv(actual_tab2, file = 'C:/Users/ckell/Dropbox/Gerrycamp Regressions Project/Mayer Project/data/count_by_dist.csv')
 ```
 
 
 I will calculate the efficience gap based on these models.
 ```{r}
+
+#efficiency gap based on different models
+source('C:/Users/ckell/Desktop/Summer 2018/MGGG/Regression/regression/src/Mayer/05_EfficiencyGap.R')
+
+eg_lin <- efficiency.gap(v_table_lm)
+eg_glm <- efficiency.gap(v_table_glm[-which(co_v_table_glm$District == 53),])
+eg_co_lin <- efficiency.gap(co_v_table_lm)
+eg_co_glm <- efficiency.gap(co_v_table_glm[-which(co_v_table_glm$District == 53),])
+
+#mean-median score
+#calculated by mean(dem_vote_share)-median(dem_vote_share)
+mm_lin <- mean_med(v_table_lm)
+mm_glm <- mean_med(v_table_glm[-which(co_v_table_glm$District == 53),])
+mm_co_lin <- mean_med(co_v_table_lm)
+mm_co_glm <- mean_med(co_v_table_glm[-which(co_v_table_glm$District == 53),])
+
+
+eval_metrics <- cbind(c(eg_lin, eg_glm, eg_co_lin, eg_co_glm),
+                      c(mm_lin, mm_glm, mm_co_lin, mm_co_glm))
+
+colnames(eval_metrics) <- c("Eff Gap", "Mean Med")
+rownames(eval_metrics) <- c("lin", "glm", "county lm", "county glm")
 
 ```
 
