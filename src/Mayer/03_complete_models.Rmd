@@ -166,7 +166,7 @@ moran.mc(x=c.r.resid.glm, listw=W.list.con, nsim=1000, zero.policy = TRUE)
 ```
 
 
-Check for overdispersion and implement 
+Check for overdispersion and implement a quasi-poisson model
 ```{r}
 #check for overdispersion
 glm.fit <- glm(formula=d.form, family = "poisson", data=con_shp@data, control = list(maxit = 1000))
@@ -217,19 +217,16 @@ Now, I will compare the models using mean-squared prediction error.
 
 First, I need to set up predicted for each model and actual for both Democratic and Republican races.
 ```{r}
-actual.d <- nonb_shp@data$c_wsa_dem12
-actual.r <- nonb_shp@data$c_wsa_rep12
-
-
-#78 districts  (uncontested)
-con_shp@data$ASM <- as.numeric(con_shp@data$ASM)
-actual_tab <- cbind(con_shp@data$ASM, con_shp@data$c_wsa_dem12, con_shp@data$c_wsa_rep12)
+#72 districts  (uncontested)
+#con_shp@data$ASM <- as.numeric(con_shp@data$ASM)
+actual_tab <- cbind(con_shp@data$assembly, con_shp@data$c_wsa_dem12, con_shp@data$c_wsa_rep12)
 actual_tab <- as.data.frame(actual_tab)
 
 colnames(actual_tab) <- c("District", "actual_d", "actual_r")
 actual_tab2 <- actual_tab %>% group_by(District) %>% dplyr::summarise(dem_votes=sum(actual_d), rep_votes = sum(actual_r))
 
-length(which(actual_tab2[,2] > actual_tab2[,3])) #20 times that the dem was greater
+length(which(actual_tab2[,2] > actual_tab2[,3])) #17 times that the dem was greater
+length(which(actual_tab2[,3] > actual_tab2[,2])) #17 times that the dem was greater
 ```
 
 Now, I will compute the MSPE for each model.
@@ -240,7 +237,7 @@ d.lm.mspe <- mean((c.d.resid.model)^2)
 #glm
 d.glm.mspe <- mean((c.d.resid.glm)^2)
 #quasi pois
-d.qpois.mspe <- mean((c.d.resid.qpois)^2)
+d.qpois.mspe <- mean((c.d.resid.qpois)^2) #this is the same as this model mainly adjusts the significance
 
 #### Republican Prediction:
 #linear model
@@ -265,13 +262,13 @@ Creation of counterfactual scenario where there is no incumbent:
 #First, I will create the model dataframe
 #c_wsa_rep12 ~ c_pre_dem12 + c_pre_rep12+total_vep +black_vep + hisp_vep + dem_incum + rep_incum 
 
-mod_dat <- For_R[,c("c_pre_dem12", "c_pre_rep12", "total_vep", "black_vep", "hisp_vep", "dem_incum", "rep_incum")]
+mod_dat <- ForR[,c("c_pre_dem12", "c_pre_rep12", "total_vep", "black_vep", "hisp_vep", "dem_incum", "rep_incum")]
 mod_dat$int <- rep(1, nrow(mod_dat))
-mod_dat <- cbind(mod_dat[,9], mod_dat[,1:8])
+mod_dat <- cbind(mod_dat[,8], mod_dat[,1:7])
 
 mod_dat2 <- con_shp@data[,c("c_pre_dem12", "c_pre_rep12", "total_vep", "black_vep", "hisp_vep", "dem_incum", "rep_incum")]
 mod_dat2$int <- rep(1, nrow(mod_dat2))
-mod_dat2 <- cbind(mod_dat2[,9], mod_dat2[,1:8])
+mod_dat2 <- cbind(mod_dat2[,8], mod_dat2[,1:7])
 
 #create function that returns predicted values under counterfactual situation
 pred_val <- function(coeffs.Dem, coeffs.Rep, mod_dat, expon){
@@ -435,7 +432,7 @@ View(mspe_tab)
 #write.csv(co_v_table_glm, file = 'C:/Users/ckell/Dropbox/Gerrycamp Regressions Project/Mayer Project/data/mod_fit/co_glm.csv')
 
 
-#save.image(file = "C:/Users/ckell/Desktop/Summer 2018/MGGG/Regression/data/wi.final_workspace.Rdata")
+#save.image(file = "C:/Users/ckell/Desktop/Summer 2018/MGGG/Regression/data/wi.ForR.final_workspace.Rdata")
 
 ```
 
@@ -446,6 +443,14 @@ xtable(bayes_mod_eval)
 
 #mspe
 xtable(mspe_tab)
+
+
+write.csv(actual_tab2, file = 'C:/Users/ckell/Dropbox/Gerrycamp Regressions Project/Mayer Project/data/count_by_dist.csv')
+```
+
+
+I will calculate the efficience gap based on these models.
+```{r}
 
 ```
 
