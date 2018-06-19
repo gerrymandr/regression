@@ -1,5 +1,5 @@
 
-df <- read.csv("ler.csv")
+#df <- read.csv("ler.csv")
 
 #function to compute number of wasted votes
 wasted.vote <- function(x,y){
@@ -16,7 +16,7 @@ efficency.gap <- function(df){
   return(sum(wasted.d.votes-wasted.r.votes)/sum(df)) #sum the difference and divide by total number of votes
   }
   
-efficency.gap(df)
+#efficency.gap(df)
   
   
   
