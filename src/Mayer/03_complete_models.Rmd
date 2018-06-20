@@ -517,8 +517,10 @@ See how many each of the models got correct:
 #actual
 length(which(actual_tab2[,3] > actual_tab2[,2])) #56, of the contested elections (72 possible)
 act_dasm <- actual_tab2$District[which(actual_tab2[,3] > actual_tab2[,2])]
+act_dasm0 <- actual_tab2$District[which(actual_tab2[,3] < actual_tab2[,2])]
 class_act <- rep(NA,99)
 class_act[act_dasm] <- 1
+class_act[act_dasm0] <- 0
 
 #lm
 lm <- cbind(con_shp@data$assembly, c.d.model$fitted.values,c.r.model$fitted.values)
@@ -527,10 +529,12 @@ colnames(lm) <- c("District", "lm_d", "lm_r")
 lm <- lm %>% group_by(District) %>% dplyr::summarise(dem_votes=sum(lm_d), rep_votes = sum(lm_r))
 length(which(lm[,3] > lm[,2] )) # 54 dem
 lm_dasm <- lm$District[which(lm[,3] > lm[,2])]
+lm_dasm0 <- lm$District[which(lm[,3] < lm[,2])]
 class_lm <- rep(NA,99)
 class_lm[lm_dasm] <- 1
+class_lm[lm_dasm0] <- 0
 
-sum(class_act == class_lm, na.rm=T) #54 correct
+sum(class_act == class_lm, na.rm=T) #68/72 correct
 
 #glm
 glm <- cbind(con_shp@data$assembly, c.d.glm_model$fitted.values,c.r.glm_model$fitted.values)
@@ -539,9 +543,11 @@ colnames(glm) <- c("District", "glm_d", "glm_r")
 glm <- glm %>% group_by(District) %>% dplyr::summarise(dem_votes=sum(glm_d), rep_votes = sum(glm_r))
 length(which(glm[,3] > glm[,2] )) # 59 dem
 glm_dasm <- glm$District[which(glm[,3] > glm[,2])]
+glm_dasm0 <- glm$District[which(glm[,3] < glm[,2])]
 class_glm <- rep(NA,99)
 class_glm[glm_dasm] <- 1
-sum(class_act == class_glm, na.rm=T) #57 correct
+class_glm[glm_dasm0] <- 0
+sum(class_act == class_glm, na.rm=T) #69/72 correct
 
 #co_lm
 co_lm <- cbind(con_shp@data$assembly, co.d.model$fitted.values,co.r.model$fitted.values)
@@ -550,9 +556,11 @@ colnames(co_lm) <- c("District", "co_lm_d", "co_lm_r")
 co_lm <- co_lm %>% group_by(District) %>% dplyr::summarise(dem_votes=sum(co_lm_d), rep_votes = sum(co_lm_r))
 length(which(co_lm[,3] > co_lm[,2] )) # 56 dem
 colm_dasm <- co_lm$District[which(co_lm[,3] > co_lm[,2])]
+colm_dasm0 <- co_lm$District[which(co_lm[,3] < co_lm[,2])]
 class_colm <- rep(NA,99)
 class_colm[colm_dasm] <- 1
-sum(class_act == class_colm, na.rm=T) #55 correct
+class_colm[colm_dasm0] <- 0
+sum(class_act == class_colm, na.rm=T) #70/72 correct
 
 #co_glm
 co_glm <- cbind(con_shp@data$assembly, co.d.glm_model$fitted.values,co.r.glm_model$fitted.values)
@@ -561,9 +569,11 @@ colnames(co_glm) <- c("District", "co_glm_d", "co_glm_r")
 co_glm <- co_glm %>% group_by(District) %>% dplyr::summarise(dem_votes=sum(co_glm_d), rep_votes = sum(co_glm_r))
 length(which(co_glm[,3] > co_glm[,2] )) # 57 dem
 coglm_dasm <- co_glm$District[which(co_glm[,3] > co_glm[,2])]
+coglm_dasm0 <- co_glm$District[which(co_glm[,3] < co_glm[,2])]
 class_coglm <- rep(NA,99)
 class_coglm[coglm_dasm] <- 1
-sum(class_act == class_coglm, na.rm=T) #55 correct
+class_coglm[coglm_dasm0] <- 0
+sum(class_act == class_coglm, na.rm=T) #69/72 correct
 
 ```
 
@@ -571,6 +581,35 @@ sum(class_act == class_coglm, na.rm=T) #55 correct
 
 Lastly, we would also like to incorporate LASSO as a means for variable selection.
 ```{r}
+## alpha = 1 gives lasso regression
+## alpha = 0 gives ridge regression
+## lasso
+
+#we need a model matrix X
+X <- as.matrix(mod_dat)
+y1 <- ForR$WSADEM12
+y2 <- ForR$WSAREP12
+
+lasso=glmnet(x=X,y=y1,family="poisson",alpha=1,nlambda=100)
+
+## use 10-fold crossvalidation to find the best lambda
+cv.lasso=cv.glmnet(x=X,y=y1,alpha=1,nfolds=10,family="poisson")
+
+## get lambda and best lasso fit
+lambda.lasso=cv.lasso$lambda.min
+lambda.lasso
+
+## some plots
+par(mfrow=c(1,2))
+plot(cv.lasso)
+abline(v=log(lambda.lasso))
+plot(lasso,xvar="lambda")
+abline(v=log(lambda.lasso))
+
+## beta estimates for best lambda
+betas.lasso=coef(cv.lasso)
+betas.lasso
+
 
 ```
 
