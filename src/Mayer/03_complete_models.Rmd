@@ -610,7 +610,44 @@ abline(v=log(lambda.lasso))
 ## beta estimates for best lambda
 betas.lasso=coef(cv.lasso)
 betas.lasso
+```
 
 
+Ridge Regression
+```{r}
+## fit ridge (trying 100 different lambda values)
+rr=glmnet(x=X,y=y1,family = "poisson",alpha=0,nlambda=100)
+plot(rr,xvar="lambda",main="Ridge Regression Betas for Different Values of the Tuning Parameter")
+
+## use 10-fold crossvalidation to find the best lambda
+cv.rr=cv.glmnet(x=X,y=y1,family = "poisson",alpha=0,nfolds=10,nlambda=200)
+
+## getting cvmspe from best value of lambda
+cvmspe.rr=min(cv.rr$cvm)
+
+## get lambda and best rr fit
+lambda.rr=cv.rr$lambda.min
+lambda.rr
+
+## some plots
+par(mfrow=c(1,2))
+plot(cv.rr)
+abline(v=log(lambda.rr))
+plot(rr,xvar="lambda",main="Ridge Regression Betas for Different Values of the Tuning Parameter")
+abline(v=log(lambda.rr))
+
+## beta estimates for best lambda
+betas.rr=coef(cv.rr,s="lambda.min")
+
+fit=lm(WSADEM12 ~ PREDEM12 + PREREP12+total_vep +black_vep + hisp_vep + dem_incum + rep_incum +county,data=con_shp@data)
+summary(fit)
+betas.lm=coef(fit)
+
+#plot(betas.rr,betas.lm,xlim=c(-6,6),ylim=c(-6,6))
+#abline(0,1)
+
+yhat.rr=predict(cv.rr,s="lambda.min",newx=as.matrix(X))
+mspe.rr=mean((y1-yhat.rr)^2)
+mspe.rr
 ```
 
