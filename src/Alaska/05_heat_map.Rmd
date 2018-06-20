@@ -32,6 +32,14 @@ library(stringi)
 require(rgdal)
 library(ngspatial)
 library(plyr)
+library(ggmap) 
+library(ggplot2)
+library(ggmap)
+library(maps)
+library(mapdata)
+library(raster)
+library(utils)
+library(rgdal)
 
 ```
 
@@ -56,6 +64,9 @@ dist_shp <- readOGR(dsn = "C:/Users/ckell/Dropbox/Gerrycamp Regressions Project/
 
 Create heatmap based off of the % demographic
 ```{r}
+#take out shape that is out to the right
+prec_shp <- prec_shp[-324,]
+
 heat_dat <- read.csv("C:/Users/ckell/Dropbox/Gerrycamp Regressions Project/Alaska Project/AKDataByPrecinct(1).csv")
 
 ball_dat <- read.csv("C:/Users/ckell/Dropbox/Gerrycamp Regressions Project/Alaska Project/data/ballot_data.csv")
@@ -78,15 +89,15 @@ prec_shp@data <- left_join(prec_shp@data, ball_dat, by = (GEOID = "GEOID"))
 
 P4S.latlon <- CRS("+proj=longlat +datum=WGS84")
 
-dist_shp <- spTransform(dist_shp, CRS("+init=epsg:3338"))
-prec_shp <- spTransform(prec_shp, CRS("+init=epsg:3338"))
+dist_shp <- spTransform(dist_shp, CRS("+init=epsg:4326")) #4326 or 3338
+prec_shp <- spTransform(prec_shp, CRS("+init=epsg:4326"))
 
 ## Plot for Proportion
 #prec_shp@data   <- join(prec_shp@data, data, by="CD_GEOCODI")
 sp_f     <- fortify(prec_shp)
 sp_f     <- join(sp_f,prec_shp@data, by="id")
 sp_f$Percent_DVote <- as.numeric(as.character(sp_f$Percent_DVote))
-sp_f <- sp_f[which(sp_f$long < 1e10),]
+#sp_f <- sp_f[which(sp_f$long < 1e10),]
 
 dist_shp_f <- fortify(dist_shp)
 
@@ -201,23 +212,41 @@ range(dist_shp_f$Prob..Dem.)
 
 Starting with attempt to add Google Maps in the background
 ```{r}
-library(ggmap) 
-library(ggplot2)
-library(ggmap)
-library(maps)
-library(mapdata)
+gmap <- get_map(location=b)
+mgmap <- as.matrix(gmap)
+vgmap <- as.vector(mgmap)
+vgmaprgb <- col2rgb(vgmap)
+gmapr <- matrix(vgmaprgb[1, ], ncol = ncol(mgmap), nrow = nrow(mgmap))
+gmapg <- matrix(vgmaprgb[2, ], ncol = ncol(mgmap), nrow = nrow(mgmap))
+gmapb <- matrix(vgmaprgb[3, ], ncol = ncol(mgmap), nrow = nrow(mgmap))
+rgmaprgb <- brick(raster(gmapr), raster(gmapg), raster(gmapb))
+rm(gmapr, gmapg, gmapb)
+extent(rgmaprgb) <- unlist(attr(gmap,which="bb"))[c(2,4,1,3)]
+projection(rgmaprgb) <- CRS("+init=epsg:3338")
+
+plot(rgmaprgb)
+
+rprobextSpDF <- as(extent(unlist(attr(gmap))), 
+    "SpatialPolygons")
+projection(rprobextSpDF) <- CRS("+init=epsg:4326")
+rprobextGM <- spTransform(rprobextSpDF, CRS("+init=epsg:3338"))
 
 
-lnd <- SpatialPolygonsDataFrame(Sr = spTransform(prec_shp, CRSobj = CRS("+init=epsg:4326")), 
-    data = prec_shp@data)
-b <- bbox(lnd)
-lnd.b1 <- ggmap(get_map(location = b))
 
-library(RgoogleMaps)
+b <- bbox(prec_shp)
+alaska_base <- ggmap(get_map(location = b))
 
-test <- ggooglemap("alaska")
 
-states <- map_data("state")
+alaska_base+ 
+  #geom_polygon(data=dist_shp,aes(long,lat, group = group), fill = NA, col = "red") + 
+  geom_polygon(data = sp_f, aes(long, lat, group = group, fill = Percent_DVote)) + 
+  coord_equal() +
+  labs(fill = "Percent Dem Vote")+ 
+  geom_polygon(data=dist_shp_f,aes(long,lat, group = group), fill = NA, col = "red") +
+  ggtitle("Percentage of Dem Vote by Precinct")+ scale_fill_gradient2(midpoint = 0.5,low = "red", high = "navyblue")#+
+  #coord_map("cylindrical")
+
+library(ggalt)
 
 ```
 
