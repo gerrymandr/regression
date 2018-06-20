@@ -397,22 +397,22 @@ r.form <- WSAREP12 ~ .
 d.form <- WSADEM12 ~ PREDEM12 + PREREP12+total_vep +black_vep + hisp_vep + dem_incum + rep_incum +county
 r.form <- WSAREP12 ~ PREDEM12 + PREREP12+total_vep +black_vep + hisp_vep + dem_incum + rep_incum +county
 
-c.d.model <- lm(formula=d.form, data=con_shp@data)
-c.d.resid.model <- con_shp@data$WSADEM12 - c.d.model$fitted.values
-c.r.model <- lm(formula=r.form, data=con_shp@data)
-c.r.resid.model <- con_shp@data$WSAREP12 - c.r.model$fitted.values
+co.d.model <- lm(formula=d.form, data=con_shp@data)
+c.d.resid.model <- con_shp@data$WSADEM12 - co.d.model$fitted.values
+co.r.model <- lm(formula=r.form, data=con_shp@data)
+c.r.resid.model <- con_shp@data$WSAREP12 - co.r.model$fitted.values
 
-# c.d.model <- lm(formula=d.form, data=d_mod_dat)
-# c.d.resid.model <- con_shp@data$WSADEM12 - c.d.model$fitted.values
-# c.r.model <- lm(formula=r.form, data=r_mod_dat)
-# c.r.resid.model <- con_shp@data$WSAREP12 - c.r.model$fitted.values
+# co.d.model <- lm(formula=d.form, data=d_mod_dat)
+# c.d.resid.model <- con_shp@data$WSADEM12 - co.d.model$fitted.values
+# co.r.model <- lm(formula=r.form, data=r_mod_dat)
+# c.r.resid.model <- con_shp@data$WSAREP12 - co.r.model$fitted.values
 
 #glm model
 
-c.d.glm_model <- glm(formula=d.form, family = "poisson", data=con_shp@data)
-c.d.resid.glm <- con_shp@data$WSADEM12 - c.d.glm_model$fitted.values
-c.r.glm_model <- glm(formula=r.form, family = "poisson", data=con_shp@data)
-c.r.resid.glm <- con_shp@data$WSAREP12 - c.r.glm_model$fitted.values
+co.d.glm_model <- glm(formula=d.form, family = "poisson", data=con_shp@data)
+c.d.resid.glm <- con_shp@data$WSADEM12 - co.d.glm_model$fitted.values
+co.r.glm_model <- glm(formula=r.form, family = "poisson", data=con_shp@data)
+c.r.resid.glm <- con_shp@data$WSAREP12 - co.r.glm_model$fitted.values
 
 ######
 #Linear Model:
@@ -423,21 +423,22 @@ c.r.resid.glm <- con_shp@data$WSAREP12 - c.r.glm_model$fitted.values
 
 co_dat <- mod_dat[,-9] #taking out county Adams (no coefficient)
 
-coeffs.Dem <-summary(c.d.model)$coefficients[,1]
-coeffs.Rep <-summary(c.r.model)$coefficients[,1]
+coeffs.Dem <-summary(co.d.model)$coefficients[,1]
+coeffs.Rep <-summary(co.r.model)$coefficients[,1]
 
 coeffs.Dem <- as.numeric(coeffs.Dem)
 coeffs.Rep <- as.numeric(coeffs.Rep)
 
 co_v_table_lm <- pred_val(coeffs.Dem, coeffs.Rep, co_dat, F)
+View(cbind(co_v_table_lm, con_actual_tab2))
 length(which(co_v_table_lm[,2] > co_v_table_lm[,3])) #predicts 42
 
 ######
 #GLM:
 ######
 
-coeffs.Dem <-summary(c.d.glm_model)$coefficients[,1]
-coeffs.Rep <-summary(c.r.glm_model)$coefficients[,1]
+coeffs.Dem <-summary(co.d.glm_model)$coefficients[,1]
+coeffs.Rep <-summary(co.r.glm_model)$coefficients[,1]
 
 coeffs.Dem <- as.numeric(coeffs.Dem)
 coeffs.Rep <- as.numeric(coeffs.Rep)
@@ -510,6 +511,63 @@ rownames(eval_metrics) <- c("lin", "glm", "county lm", "county glm")
 
 #save.image(file = "C:/Users/ckell/Desktop/Summer 2018/MGGG/Regression/data/wi.ForR.final_workspace.Rdata")
 ```
+
+See how many each of the models got correct:
+```{r}
+#actual
+length(which(actual_tab2[,3] > actual_tab2[,2])) #56, of the contested elections (72 possible)
+act_dasm <- actual_tab2$District[which(actual_tab2[,3] > actual_tab2[,2])]
+class_act <- rep(NA,99)
+class_act[act_dasm] <- 1
+
+#lm
+lm <- cbind(con_shp@data$assembly, c.d.model$fitted.values,c.r.model$fitted.values)
+lm <- as.data.frame(lm)
+colnames(lm) <- c("District", "lm_d", "lm_r")
+lm <- lm %>% group_by(District) %>% dplyr::summarise(dem_votes=sum(lm_d), rep_votes = sum(lm_r))
+length(which(lm[,3] > lm[,2] )) # 54 dem
+lm_dasm <- lm$District[which(lm[,3] > lm[,2])]
+class_lm <- rep(NA,99)
+class_lm[lm_dasm] <- 1
+
+sum(class_act == class_lm, na.rm=T) #54 correct
+
+#glm
+glm <- cbind(con_shp@data$assembly, c.d.glm_model$fitted.values,c.r.glm_model$fitted.values)
+glm <- as.data.frame(glm)
+colnames(glm) <- c("District", "glm_d", "glm_r")
+glm <- glm %>% group_by(District) %>% dplyr::summarise(dem_votes=sum(glm_d), rep_votes = sum(glm_r))
+length(which(glm[,3] > glm[,2] )) # 59 dem
+glm_dasm <- glm$District[which(glm[,3] > glm[,2])]
+class_glm <- rep(NA,99)
+class_glm[glm_dasm] <- 1
+sum(class_act == class_glm, na.rm=T) #57 correct
+
+#co_lm
+co_lm <- cbind(con_shp@data$assembly, co.d.model$fitted.values,co.r.model$fitted.values)
+co_lm <- as.data.frame(co_lm)
+colnames(co_lm) <- c("District", "co_lm_d", "co_lm_r")
+co_lm <- co_lm %>% group_by(District) %>% dplyr::summarise(dem_votes=sum(co_lm_d), rep_votes = sum(co_lm_r))
+length(which(co_lm[,3] > co_lm[,2] )) # 56 dem
+colm_dasm <- co_lm$District[which(co_lm[,3] > co_lm[,2])]
+class_colm <- rep(NA,99)
+class_colm[colm_dasm] <- 1
+sum(class_act == class_colm, na.rm=T) #55 correct
+
+#co_glm
+co_glm <- cbind(con_shp@data$assembly, co.d.glm_model$fitted.values,co.r.glm_model$fitted.values)
+co_glm <- as.data.frame(co_glm)
+colnames(co_glm) <- c("District", "co_glm_d", "co_glm_r")
+co_glm <- co_glm %>% group_by(District) %>% dplyr::summarise(dem_votes=sum(co_glm_d), rep_votes = sum(co_glm_r))
+length(which(co_glm[,3] > co_glm[,2] )) # 57 dem
+coglm_dasm <- co_glm$District[which(co_glm[,3] > co_glm[,2])]
+class_coglm <- rep(NA,99)
+class_coglm[coglm_dasm] <- 1
+sum(class_act == class_coglm, na.rm=T) #55 correct
+
+```
+
+
 
 Lastly, we would also like to incorporate LASSO as a means for variable selection.
 ```{r}
