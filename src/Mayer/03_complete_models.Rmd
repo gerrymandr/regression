@@ -35,10 +35,12 @@ library(ngspatial)
 library(plyr)
 library(readxl)
 
+#use to the following data:
+#Datato be used in R, ForR_contested.R
 ```
 
 Now, we will load the data, including the following:
-  * shape files
+ b* shape files
 * demographics
 * voting data
 ```{r}
@@ -50,7 +52,14 @@ ward_shp <- readOGR(dsn = "C:/Users/ckell/Dropbox/Gerrycamp Regressions Project/
 #quick fit with demographics
 #demog_vote <- read.csv("C:/Users/ckell/Dropbox/Gerrycamp Regressions Project/Mayer Project/data/QuickFitWithDemographics.csv")
 
-ForR <- read_excel("C:/Users/ckell/Dropbox/Gerrycamp Regressions Project/Mayer Project/Data to be Used in R/ForR.xlsx")
+#ForR <- read_excel("C:/Users/ckell/Dropbox/Gerrycamp Regressions Project/Mayer Project/Data to be Used in R/ForR.xlsx")
+ForR <- read_excel("C:/Users/ckell/Dropbox/Gerrycamp Regressions Project/Mayer Project/Reconciliation/ForR.xlsx")
+
+ForR_con <- read.csv("C:/Users/ckell/Dropbox/Gerrycamp Regressions Project/Mayer Project/Data to be Used in R/ForR_contested.csv")
+
+#leaves out Dunn county
+#response: WSAREP
+#also use PREDEM
 
 ```
 
@@ -94,6 +103,9 @@ ward_shp@data <- left_join(ward_shp@data, ForR, by = (GEOID = "GEOID"))
 # ward_shp@data$CWSADEM12 <- round(ward_shp@data$CWSADEM12)
 # ward_shp@data$CWSAREP12 <- round(ward_shp@data$CWSAREP12)
 
+#ward_shp@data$CWSADEM12 <- round(ward_shp@data$CWSADEM12)
+#ward_shp@data$CWSAREP12 <- round(ward_shp@data$CWSAREP12)
+
 ward_shp@data$c_wsa_dem12 <- round(ward_shp@data$c_wsa_dem12)
 ward_shp@data$c_wsa_rep12 <- round(ward_shp@data$c_wsa_rep12)
 
@@ -105,14 +117,14 @@ Our first step in terms of modeling will be to run our model in a linear model a
 ```{r}
 
 #need to delete Object ID 6481 (outlier)
-range(ward_shp@data$c_wsa_dem12)
-out <- which(ward_shp@data$GEOID == 6481)
-ward_shp <- ward_shp[-out,]
-range(ward_shp@data$c_wsa_dem12)
-range(ward_shp@data$c_wsa_rep12)
-
-ForR <- ForR[-out,]
-range(ForR$c_wsa_dem12)
+# range(ward_shp@data$c_wsa_dem12)
+# out <- which(ward_shp@data$GEOID == 6481)
+# ward_shp <- ward_shp[-out,]
+# range(ward_shp@data$c_wsa_dem12)
+# range(ward_shp@data$c_wsa_rep12)
+# 
+# ForR <- ForR[-which(ForR$GEOID == 6481),]
+# range(ForR$c_wsa_dem12)
 
 #we need to decide variables to use in our analysis
 #colnames(demog_vote)
@@ -126,22 +138,22 @@ con_shp <- ward_shp[-unc,]
 #d.form <- CWSADEM12 ~ CPREDEM12 + CPREREP12+PERSONS18 +BLACK18  + HISPANIC18+ IncumD_Pop + IncumR_Pop 
 #r.form <- CWSAREP12 ~ CPREDEM12 + CPREREP12+PERSONS18 +BLACK18  + HISPANIC18+ IncumD_Pop + IncumR_Pop 
 
-d.form <- c_wsa_dem12 ~ c_pre_dem12 + c_pre_rep12+total_vep +black_vep + hisp_vep + dem_incum + rep_incum 
-r.form <- c_wsa_rep12 ~ c_pre_dem12 + c_pre_rep12+total_vep +black_vep + hisp_vep + dem_incum + rep_incum 
+d.form <- WSADEM12 ~ PREDEM12 + PREREP12+total_vep +black_vep + hisp_vep + dem_incum + rep_incum 
+r.form <- WSAREP12 ~ PREDEM12 + PREREP12+total_vep +black_vep + hisp_vep + dem_incum + rep_incum 
 
 
 #create linear models
 c.d.model <- lm(formula=d.form, data=con_shp@data)
-c.d.resid.model <- con_shp@data$c_wsa_dem12 - c.d.model$fitted.values
+c.d.resid.model <- con_shp@data$WSADEM12 - c.d.model$fitted.values
 c.r.model <- lm(formula=r.form, data=con_shp@data)
-c.r.resid.model <- con_shp@data$c_wsa_rep12 - c.r.model$fitted.values
+c.r.resid.model <- con_shp@data$WSAREP12 - c.r.model$fitted.values
 
 
 #glm models
 c.d.glm_model <- glm(formula=d.form, family = "poisson", data=con_shp@data)
-c.d.resid.glm <- con_shp@data$c_wsa_dem12 - c.d.glm_model$fitted.values
+c.d.resid.glm <- con_shp@data$WSADEM12 - c.d.glm_model$fitted.values
 c.r.glm_model <- glm(formula=r.form, family = "poisson", data=con_shp@data)
-c.r.resid.glm <- con_shp@data$c_wsa_rep12 - c.r.glm_model$fitted.values
+c.r.resid.glm <- con_shp@data$WSAREP12 - c.r.glm_model$fitted.values
 
 
 #test for spatial dependence
@@ -182,15 +194,15 @@ summary(glm.fit)
 sum(residuals(glm.fit, type="pearson")^2)/glm.fit$df.residual
 
 glm.fit.quasi.d <- glm(formula=d.form, family = "quasipoisson", data=con_shp@data, control = list(maxit = 1000))
-c.d.resid.qpois <- con_shp@data$c_wsa_dem12 - glm.fit.quasi.d$fitted.values
+c.d.resid.qpois <- con_shp@data$WSADEM12 - glm.fit.quasi.d$fitted.values
 
 glm.fit.quasi.r <- glm(formula=r.form, family = "quasipoisson", data=con_shp@data, control = list(maxit = 1000))
-c.r.resid.qpois <- con_shp@data$c_wsa_rep12 - glm.fit.quasi.r$fitted.values
+c.r.resid.qpois <- con_shp@data$WSAREP12 - glm.fit.quasi.r$fitted.values
 
 ### Model Diagnostics
 fitted.mean <- predict.glm(glm.fit, type='link')
 fitted.resp <- predict.glm(glm.fit, type='response')
-fitted.var <- (con_shp@data$c_wsa_dem12 - fitted.mean)^2
+fitted.var <- (con_shp@data$WSADEM12 - fitted.mean)^2
 
 ### Model Comparison: MSE
 # fitted.mean <- (predict.glm(glm.fit.quasi, type='link'))
@@ -223,7 +235,7 @@ First, I need to set up predicted for each model and actual for both Democratic 
 ```{r}
 #72 districts  (uncontested)
 #con_shp@data$ASM <- as.numeric(con_shp@data$ASM)
-actual_tab <- cbind(con_shp@data$assembly, con_shp@data$c_wsa_dem12, con_shp@data$c_wsa_rep12)
+actual_tab <- cbind(con_shp@data$assembly, con_shp@data$WSADEM12, con_shp@data$WSAREP12)
 actual_tab <- as.data.frame(actual_tab)
 
 colnames(actual_tab) <- c("District", "actual_d", "actual_r")
@@ -232,7 +244,7 @@ actual_tab2 <- actual_tab %>% group_by(District) %>% dplyr::summarise(dem_votes=
 length(which(actual_tab2[,2] > actual_tab2[,3])) #17 times that the dem was greater
 length(which(actual_tab2[,3] > actual_tab2[,2])) #17 times that the dem was greater
 
-con_actual_tab <- cbind(ForR$assembly, ForR$c_wsa_dem12, ForR$c_wsa_rep12)
+con_actual_tab <- cbind(ForR$assembly, ForR$WSADEM12, ForR$WSAREP12)
 con_actual_tab <- as.data.frame(con_actual_tab)
 
 colnames(con_actual_tab) <- c("District", "actual_d", "actual_r")
@@ -272,13 +284,13 @@ rownames(rmspe_tab) <- c("Democrat", "Republican")
 Creation of counterfactual scenario where there is no incumbent:
 ```{r}
 #First, I will create the model dataframe
-#c_wsa_rep12 ~ c_pre_dem12 + c_pre_rep12+total_vep +black_vep + hisp_vep + dem_incum + rep_incum 
+#WSADEM12 ~ PREDEM12 + PREREP12+total_vep +black_vep + hisp_vep + dem_incum + rep_incum 
 
-mod_dat <- ForR[,c("c_pre_dem12", "c_pre_rep12", "total_vep", "black_vep", "hisp_vep", "dem_incum", "rep_incum")]
+mod_dat <- ForR[,c("PREDEM12", "PREREP12", "total_vep", "black_vep", "hisp_vep", "dem_incum", "rep_incum")]
 mod_dat$int <- rep(1, nrow(mod_dat))
 mod_dat <- cbind(mod_dat[,8], mod_dat[,1:7])
 
-mod_dat2 <- con_shp@data[,c("c_pre_dem12", "c_pre_rep12", "total_vep", "black_vep", "hisp_vep", "dem_incum", "rep_incum")]
+mod_dat2 <- con_shp@data[,c("PREDEM12", "PREREP12", "total_vep", "black_vep", "hisp_vep", "dem_incum", "rep_incum")]
 mod_dat2$int <- rep(1, nrow(mod_dat2))
 mod_dat2 <- cbind(mod_dat2[,8], mod_dat2[,1:7])
 
@@ -335,7 +347,7 @@ coeffs.Rep <- as.numeric(coeffs.Rep)
 
 v_table_lm <- pred_val(coeffs.Dem, coeffs.Rep, mod_dat, F)
 View(cbind(v_table_lm, con_actual_tab2))
-length(which(v_table_lm[,2] > v_table_lm[,3])) #predicts 41
+length(which(v_table_lm[,2] > v_table_lm[,3])) #predicts 40
 
 ######
 #GLM:
@@ -351,7 +363,7 @@ coeffs.Rep <- as.numeric(coeffs.Rep)
 v_table_glm <- pred_val(coeffs.Dem, coeffs.Rep, mod_dat, T)
 View(cbind(v_table_glm, con_actual_tab2))
 
-length(which(v_table_glm[,2] > v_table_glm[,3])) #still only predicts 37
+length(which(v_table_glm[,2] > v_table_glm[,3])) #still only predicts 34
 
 
 #write.csv(v_table_lm, file = 'C:/Users/ckell/Dropbox/Gerrycamp Regressions Project/Mayer Project/data/mod_fit/lin_mod.csv')
@@ -361,12 +373,10 @@ length(which(v_table_glm[,2] > v_table_glm[,3])) #still only predicts 37
 Now, we will consider county fixed effects in our counterfactual scenario.
 
 ```{r}
-#I believe there is an error in District 53
-
 #First, I will create the model dataframe
-mod_dat <- ForR[,c("c_pre_dem12", "c_pre_rep12", "total_vep", "black_vep", "hisp_vep", "dem_incum", "rep_incum")]
-d_mod_dat <- con_shp@data[,c("c_wsa_dem12", "c_pre_dem12", "c_pre_rep12", "total_vep", "black_vep", "hisp_vep", "dem_incum", "rep_incum")]
-r_mod_dat <- con_shp@data[,c("c_wsa_rep12", "c_pre_dem12", "c_pre_rep12", "total_vep", "black_vep", "hisp_vep", "dem_incum", "rep_incum")]
+mod_dat <- ForR[,c("PREDEM12", "PREREP12", "total_vep", "black_vep", "hisp_vep", "dem_incum", "rep_incum")]
+d_mod_dat <- con_shp@data[,c("WSADEM12", "PREDEM12", "PREREP12", "total_vep", "black_vep", "hisp_vep", "dem_incum", "rep_incum")]
+r_mod_dat <- con_shp@data[,c("WSAREP12", "PREDEM12", "PREREP12", "total_vep", "black_vep", "hisp_vep", "dem_incum", "rep_incum")]
 
 #con_shp@data$CON <- as.numeric(as.character(con_shp@data$CON))
 length(unique(con_shp@data$county))
@@ -381,20 +391,28 @@ mod_dat <- cbind(mod_dat[,8], mod_dat[,1:7], mod_mat2)
 colnames(mod_dat)[1]<- c("int")
 
 #non-spatial modeling
-d.form <- c_wsa_dem12 ~ .
-r.form <- c_wsa_rep12 ~ .
+d.form <- WSADEM12 ~ .
+r.form <- WSAREP12 ~ .
 
-c.d.model <- lm(formula=d.form, data=d_mod_dat)
-c.d.resid.model <- con_shp@data$c_wsa_dem12 - c.d.model$fitted.values
-c.r.model <- lm(formula=r.form, data=r_mod_dat)
-c.r.resid.model <- con_shp@data$c_wsa_rep12 - c.r.model$fitted.values
+d.form <- WSADEM12 ~ PREDEM12 + PREREP12+total_vep +black_vep + hisp_vep + dem_incum + rep_incum +county
+r.form <- WSAREP12 ~ PREDEM12 + PREREP12+total_vep +black_vep + hisp_vep + dem_incum + rep_incum +county
+
+c.d.model <- lm(formula=d.form, data=con_shp@data)
+c.d.resid.model <- con_shp@data$WSADEM12 - c.d.model$fitted.values
+c.r.model <- lm(formula=r.form, data=con_shp@data)
+c.r.resid.model <- con_shp@data$WSAREP12 - c.r.model$fitted.values
+
+# c.d.model <- lm(formula=d.form, data=d_mod_dat)
+# c.d.resid.model <- con_shp@data$WSADEM12 - c.d.model$fitted.values
+# c.r.model <- lm(formula=r.form, data=r_mod_dat)
+# c.r.resid.model <- con_shp@data$WSAREP12 - c.r.model$fitted.values
 
 #glm model
 
-c.d.glm_model <- glm(formula=d.form, family = "poisson", data=d_mod_dat)
-c.d.resid.glm <- con_shp@data$c_wsa_dem12 - c.d.glm_model$fitted.values
-c.r.glm_model <- glm(formula=r.form, family = "poisson", data=r_mod_dat)
-c.r.resid.glm <- con_shp@data$c_wsa_rep12 - c.r.glm_model$fitted.values
+c.d.glm_model <- glm(formula=d.form, family = "poisson", data=con_shp@data)
+c.d.resid.glm <- con_shp@data$WSADEM12 - c.d.glm_model$fitted.values
+c.r.glm_model <- glm(formula=r.form, family = "poisson", data=con_shp@data)
+c.r.resid.glm <- con_shp@data$WSAREP12 - c.r.glm_model$fitted.values
 
 ######
 #Linear Model:
@@ -403,7 +421,7 @@ c.r.resid.glm <- con_shp@data$c_wsa_rep12 - c.r.glm_model$fitted.values
 #take out columns with column sum = 0
 #co_dat <- mod_dat[,-as.numeric(which(colSums(d_mod_dat) == 0))]
 
-co_dat <- mod_dat[,-80] #also taking out countyWood 
+co_dat <- mod_dat[,-9] #taking out county Adams (no coefficient)
 
 coeffs.Dem <-summary(c.d.model)$coefficients[,1]
 coeffs.Rep <-summary(c.r.model)$coefficients[,1]
@@ -412,7 +430,7 @@ coeffs.Dem <- as.numeric(coeffs.Dem)
 coeffs.Rep <- as.numeric(coeffs.Rep)
 
 co_v_table_lm <- pred_val(coeffs.Dem, coeffs.Rep, co_dat, F)
-length(which(co_v_table_lm[,2] > co_v_table_lm[,3])) #predicts 44
+length(which(co_v_table_lm[,2] > co_v_table_lm[,3])) #predicts 42
 
 ######
 #GLM:
@@ -426,7 +444,7 @@ coeffs.Rep <- as.numeric(coeffs.Rep)
 
 co_v_table_glm <- pred_val(coeffs.Dem, coeffs.Rep, co_dat, T)
 View(cbind(co_v_table_glm, con_actual_tab2))
-length(which(co_v_table_glm[,2] > co_v_table_glm[,3])) #predicts 43
+length(which(co_v_table_glm[,2] > co_v_table_glm[,3])) #predicts 40
 
 
 #linear model
@@ -488,6 +506,13 @@ eval_metrics <- cbind(c(eg_lin, eg_glm, eg_co_lin, eg_co_glm),
 
 colnames(eval_metrics) <- c("Eff Gap", "Mean Med")
 rownames(eval_metrics) <- c("lin", "glm", "county lm", "county glm")
+
+
+#save.image(file = "C:/Users/ckell/Desktop/Summer 2018/MGGG/Regression/data/wi.ForR.final_workspace.Rdata")
+```
+
+Lastly, we would also like to incorporate LASSO as a means for variable selection.
+```{r}
 
 ```
 
