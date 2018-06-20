@@ -89,8 +89,8 @@ prec_shp@data <- left_join(prec_shp@data, ball_dat, by = (GEOID = "GEOID"))
 
 P4S.latlon <- CRS("+proj=longlat +datum=WGS84")
 
-dist_shp <- spTransform(dist_shp, CRS("+init=epsg:4326")) #4326 or 3338
-prec_shp <- spTransform(prec_shp, CRS("+init=epsg:4326"))
+dist_shp <- spTransform(dist_shp, CRS("+init=epsg:3338")) #4326 or 3338
+prec_shp <- spTransform(prec_shp, CRS("+init=epsg:3338"))
 
 ## Plot for Proportion
 #prec_shp@data   <- join(prec_shp@data, data, by="CD_GEOCODI")
@@ -231,19 +231,19 @@ rprobextSpDF <- as(extent(unlist(attr(gmap))),
 projection(rprobextSpDF) <- CRS("+init=epsg:4326")
 rprobextGM <- spTransform(rprobextSpDF, CRS("+init=epsg:3338"))
 
-
+library(sp)
+library(rworldmap)
 
 b <- bbox(prec_shp)
 alaska_base <- ggmap(get_map(location = b))
 
-
 alaska_base+ 
   #geom_polygon(data=dist_shp,aes(long,lat, group = group), fill = NA, col = "red") + 
-  geom_polygon(data = sp_f, aes(long, lat, group = group, fill = Percent_DVote)) + 
-  coord_equal() +
+  geom_polygon(data = sp_f, aes(long, lat, group = group, fill = Percent_DVote))  +
   labs(fill = "Percent Dem Vote")+ 
   geom_polygon(data=dist_shp_f,aes(long,lat, group = group), fill = NA, col = "red") +
-  ggtitle("Percentage of Dem Vote by Precinct")+ scale_fill_gradient2(midpoint = 0.5,low = "red", high = "navyblue")#+
+  ggtitle("Percentage of Dem Vote by Precinct")+ scale_fill_gradient2(midpoint = 0.5,low = "red", high = "navyblue")+ 
+  coord_equal()#+
   #coord_map("cylindrical")
 
 library(ggalt)
