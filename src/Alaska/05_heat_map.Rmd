@@ -87,6 +87,8 @@ prec_shp@data$id <- rownames(prec_shp@data)
 prec_shp@data <- left_join(prec_shp@data, heat_dat, by = (GEOID = "GEOID"))
 prec_shp@data <- left_join(prec_shp@data, ball_dat, by = (GEOID = "GEOID"))
 
+write.csv(prec_shp@data, "C:/Users/ckell/Dropbox/Gerrycamp Regressions Project/Alaska Project/data/comb_data.csv")
+
 P4S.latlon <- CRS("+proj=longlat +datum=WGS84")
 
 dist_shp <- spTransform(dist_shp, CRS("+init=epsg:3338")) #4326 or 3338
