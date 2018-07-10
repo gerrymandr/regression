@@ -104,9 +104,9 @@ Our first step in terms of modeling will be to run our model in a linear model a
 ```{r}
 
 #need to delete Object ID 6481 (outlier)
-range(ward_shp@data$c_wsa_dem12)
-out <- which(ward_shp@data$GEOID == 6481)
-ward_shp <- ward_shp[-out,]
+#range(ward_shp@data$c_wsa_dem12)
+#out <- which(ward_shp@data$GEOID == 6481)
+#ward_shp <- ward_shp[-out,]
 range(ward_shp@data$c_wsa_dem12)
 range(ward_shp@data$c_wsa_rep12)
 
@@ -122,8 +122,8 @@ con_shp <- ward_shp[-unc,]
 #d.form <- CWSADEM12 ~ CPREDEM12 + CPREREP12+PERSONS18 +BLACK18  + HISPANIC18+ IncumD_Pop + IncumR_Pop 
 #r.form <- CWSAREP12 ~ CPREDEM12 + CPREREP12+PERSONS18 +BLACK18  + HISPANIC18+ IncumD_Pop + IncumR_Pop 
 
-d.form <- c_wsa_dem12 ~ c_pre_dem12 + c_pre_rep12+total_vep +black_vep + hisp_vep + dem_incum + rep_incum 
-r.form <- c_wsa_rep12 ~ c_pre_dem12 + c_pre_rep12+total_vep +black_vep + hisp_vep + dem_incum + rep_incum 
+d.form <- WSADEM12 ~ PREDEM12 + PREREP12+total_vep +black_vep + hisp_vep + dem_incum + rep_incum 
+r.form <- WSAREP12 ~ PREDEM12 + PREREP12+total_vep +black_vep + hisp_vep + dem_incum + rep_incum 
 
 #create linear models
 c.d.model <- lm(formula=d.form, data=con_shp@data)
@@ -180,6 +180,7 @@ c.d.model.ler <- S.CARleroux(formula=d.form, data=nonb_shp@data,
 #started at 3:50pm, started MCMC at 3:58pm, finished in  2595 seconds
 c.r.model.ler <- S.CARleroux(formula=r.form, data=nonb_shp@data,
                              family="poisson", W=nonb_W, burnin=20000, n.sample=120000, thin=10)
+#need to rerun the d leroux model
 
 ##############
 # BYM Model
@@ -194,23 +195,23 @@ c.r.model.bym <- S.CARbym(formula=r.form, data=nonb_shp@data,
 
 
 #save(c.d.model.ler, #c.r.model.ler, c.d.model.bym, c.r.model.bym, 
-     #file = "C:/Users/ckell/Desktop/Summer 2018/MGGG/Regression/data/c_d_model_ler.Rdata")
+#     file = "C:/Users/ckell/Desktop/Summer 2018/MGGG/Regression/data2/c_d_model_ler.Rdata")
 #save(c.r.model.ler, #c.r.model.ler, c.d.model.bym, c.r.model.bym, 
-#     file = "C:/Users/ckell/Desktop/Summer 2018/MGGG/Regression/data/c_r_model_ler.Rdata")
+#     file = "C:/Users/ckell/Desktop/Summer 2018/MGGG/Regression/data2/c_r_model_ler.Rdata")
 #save(c.d.model.bym, #c.r.model.ler, c.d.model.bym, c.r.model.bym, 
-#     file = "C:/Users/ckell/Desktop/Summer 2018/MGGG/Regression/data/c_d_model_bym.Rdata")
+#     file = "C:/Users/ckell/Desktop/Summer 2018/MGGG/Regression/data2/c_d_model_bym.Rdata")
 #save(c.r.model.bym, #c.r.model.ler, c.d.model.bym, c.r.model.bym, 
-#     file = "C:/Users/ckell/Desktop/Summer 2018/MGGG/Regression/data/c_r_model_bym.Rdata")
+#     file = "C:/Users/ckell/Desktop/Summer 2018/MGGG/Regression/data2/c_r_model_bym.Rdata")
 
 #rm(c.d.model.ler)
 #rm(c.r.model.ler)
 #rm(c.d.model.bym)
 #rm(c.r.model.bym)
 
-#     load(file = "C:/Users/ckell/Desktop/Summer 2018/MGGG/Regression/data/c_d_model_ler.Rdata")
-#     load(file = "C:/Users/ckell/Desktop/Summer 2018/MGGG/Regression/data/c_r_model_ler.Rdata")
-#     load(file = "C:/Users/ckell/Desktop/Summer 2018/MGGG/Regression/data/c_d_model_bym.Rdata")
-#     load(file = "C:/Users/ckell/Desktop/Summer 2018/MGGG/Regression/data/c_r_model_bym.Rdata")
+#     load(file = "C:/Users/ckell/Desktop/Summer 2018/MGGG/Regression/data2/c_d_model_ler.Rdata")
+#     load(file = "C:/Users/ckell/Desktop/Summer 2018/MGGG/Regression/data2/c_r_model_ler.Rdata")
+#     load(file = "C:/Users/ckell/Desktop/Summer 2018/MGGG/Regression/data2/c_d_model_bym.Rdata")
+#     load(file = "C:/Users/ckell/Desktop/Summer 2018/MGGG/Regression/data2/c_r_model_bym.Rdata")
 
 ##############
 # Model Evaluation
@@ -269,8 +270,8 @@ Now, I will compare the models using mean-squared prediction error.
 
 First, I need to set up predicted for each model and actual for both Democratic and Republican races.
 ```{r}
-actual.d <- nonb_shp@data$c_wsa_dem12
-actual.r <- nonb_shp@data$c_wsa_rep12
+actual.d <- nonb_shp@data$WSADEM12
+actual.r <- nonb_shp@data$WSAREP12
 
 d.pred.bym <- c.d.model.bym$fitted.values
 r.pred.bym <- c.r.model.bym$fitted.values
@@ -283,30 +284,38 @@ r.pred.ler <- c.r.model.ler$fitted.values
 
 #78 districts  (uncontested)
 con_shp@data$ASM <- as.numeric(con_shp@data$ASM)
-actual_tab <- cbind(con_shp@data$ASM, con_shp@data$c_wsa_dem12, con_shp@data$c_wsa_rep12)
+actual_tab <- cbind(con_shp@data$ASM, con_shp@data$WSADEM12, con_shp@data$WSAREP12)
 actual_tab <- as.data.frame(actual_tab)
 
 colnames(actual_tab) <- c("District", "actual_d", "actual_r")
 actual_tab2 <- actual_tab %>% group_by(District) %>% dplyr::summarise(dem_votes=sum(actual_d), rep_votes = sum(actual_r))
 
-length(which(actual_tab2[,2] > actual_tab2[,3])) #20 times that the dem was greater
+length(which(actual_tab2[,2] > actual_tab2[,3])) #16 times that the dem was greater
+
+new_var <- rep(NA, length(actual.r))
+new_var[which(actual.r- r.pred.bym > 5)] <- 1
+sum(new_var, na.rm=T)
+# 325
+View(cbind(r.pred.bym, actual.r, nonb_shp@data$dem_incum, nonb_shp@data$rep_incum, new_var))
+View(cbind(r.pred.bym, actual.r, nonb_shp@data$PREDEM12, nonb_shp@data$PREREP12, new_var))
+View(cbind(r.pred.bym, actual.r, nonb_shp@data$total_vep, nonb_shp@data$black_vep, new_var))
 ```
 
 Now, I will compute the MSPE for each model.
 ```{r}
 #### Democratic Prediction:
 #bym
-d.bym.mspe <- mean((d.pred.bym-actual.d)^2)
+d.bym.mspe <- sqrt(mean((d.pred.bym-actual.d)^2))
 #leroux
-d.ler.mspe <- mean((d.pred.ler-actual.d)^2)
+d.ler.mspe <- sqrt(mean((d.pred.ler-actual.d)^2))
 #sglmm
 #d.sglmm.mspe <- mean((d.pred.sglmm - actual.d)^2)
 
 #### Republican Prediction:
 #bym
-r.bym.mspe <- mean((r.pred.bym-actual.r)^2)
+r.bym.mspe <- sqrt(mean((r.pred.bym-actual.r)^2))
 #leroux
-r.ler.mspe <- mean((r.pred.ler-actual.r)^2)
+r.ler.mspe <- sqrt(mean((r.pred.ler-actual.r)^2))
 #sglmm
 #r.sglmm.mspe <- mean((r.pred.sglmm - actual.r)^2)
 
@@ -315,6 +324,8 @@ mspe_tab <- rbind(c(d.bym.mspe, d.ler.mspe),#, d.sglmm.mspe),
 #mspe_tab_count <- mspe_tab
 colnames(mspe_tab) <- c("bym", "leroux")#, "sglmm")
 rownames(mspe_tab) <- c("Democrat", "Republican")
+
+xtable(mspe_tab)
 
 ```
 
@@ -458,3 +469,65 @@ xtable(mspe_tab)
 
 ```
 
+
+```{r}
+plot(nonb_shp)
+
+## Plot for Proportion
+#prec_shp@data   <- join(prec_shp@data, data, by="CD_GEOCODI")
+nonb_shp@data$error <- abs(r.pred.bym- actual.r)
+nonb_shp@data$id <- rownames(nonb_shp@data)
+sp_f     <- fortify(nonb_shp)
+sp_f     <- join(sp_f,nonb_shp@data, by="id")
+#sp_f <- sp_f[which(sp_f$long < 1e10),]
+
+fit_by_ward <- ggplot()+ 
+  #geom_polygon(data=dist_shp,aes(long,lat, group = group), fill = NA, col = "red") + 
+  geom_polygon(data = sp_f, aes(long, lat, group = group, fill = log(error))) + 
+  coord_equal() +
+  labs(fill = "log error by Ward") +
+  ggtitle("absolute Error by Ward")+ scale_fill_gradient2(midpoint = 0.5,low = "white", high = "red")
+
+
+nonb_shp@data$d_error <- abs(d.pred.bym- actual.d)
+nonb_shp@data$id <- rownames(nonb_shp@data)
+sp_f     <- fortify(nonb_shp)
+sp_f     <- join(sp_f,nonb_shp@data, by="id")
+#sp_f <- sp_f[which(sp_f$long < 1e10),]
+
+fit_by_ward <- ggplot()+ 
+  #geom_polygon(data=dist_shp,aes(long,lat, group = group), fill = NA, col = "red") + 
+  geom_polygon(data = sp_f, aes(long, lat, group = group, fill = log(d_error))) + 
+  coord_equal() +
+  labs(fill = "Dem log error by Ward") +
+  ggtitle("Dem absolute Error by Ward")+ scale_fill_gradient2(midpoint = 0.5,low = "white", high = "red")
+
+model_error <- nonb_shp@data
+write.csv(model_error, file = "C:/Users/ckell/Dropbox/Gerrycamp Regressions Project/Mayer Project/model_error.csv")
+
+r.form
+#WSAREP12 ~ PREDEM12 + PREREP12 + total_vep + black_vep + hisp_vep + 
+#    dem_incum + rep_incum
+
+plot(model_error$error, model_error$total_vep)
+plot(model_error$error, model_error$black_vep)
+plot(model_error$error, model_error$hisp_vep)
+
+plot(model_error$error, model_error$dem_incum)
+plot(model_error$error, model_error$rep_incum)
+
+plot(model_error$error, model_error$PREDEM12)
+plot(model_error$error, model_error$PREREP12)
+plot(model_error$error, model_error$WSADEM12)
+plot(model_error$error, model_error$WSAREP12)
+
+
+```
+
+
+Check for overfit? Try to fit models without PREDEM12 or PREREP12
+
+
+Need to check the non counterfactual scenario to check efficiency gap
+
+check difference in estimate for linear model
