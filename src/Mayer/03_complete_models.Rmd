@@ -53,10 +53,12 @@ ward_shp <- readOGR(dsn = "C:/Users/ckell/Dropbox/Gerrycamp Regressions Project/
 #quick fit with demographics
 #demog_vote <- read.csv("C:/Users/ckell/Dropbox/Gerrycamp Regressions Project/Mayer Project/data/QuickFitWithDemographics.csv")
 
-#ForR <- read_excel("C:/Users/ckell/Dropbox/Gerrycamp Regressions Project/Mayer Project/Data to be Used in R/ForR.xlsx")
-ForR <- read_excel("C:/Users/ckell/Dropbox/Gerrycamp Regressions Project/Mayer Project/Reconciliation/ForR.xlsx")
+#final data used in model
+ForR <- read_excel("C:/Users/ckell/Dropbox/Gerrycamp Regressions Project/Mayer Project/Data to be Used in R/ForR.xlsx")
 
-ForR_con <- read.csv("C:/Users/ckell/Dropbox/Gerrycamp Regressions Project/Mayer Project/Data to be Used in R/ForR_contested.csv")
+#older drafts of the data
+#ForR <- read_excel("C:/Users/ckell/Dropbox/Gerrycamp Regressions Project/Mayer Project/Reconciliation/ForR.xlsx")
+#ForR_con <- read.csv("C:/Users/ckell/Dropbox/Gerrycamp Regressions Project/Mayer Project/Data to be Used in R/ForR_contested.csv")
 
 #leaves out Dunn county
 #response: WSAREP
@@ -132,6 +134,7 @@ Our first step in terms of modeling will be to run our model in a linear model a
 
 #create a variable for uncontested races
 #unc <- unique(which(ward_shp@data$Contested == "U"))
+# 0 if the race is uncontested, 1 if it is contested
 unc <- unique(which(ward_shp@data$contested_1 == "0"))
 con_shp <- ward_shp[-unc,]
 
@@ -242,8 +245,8 @@ actual_tab <- as.data.frame(actual_tab)
 colnames(actual_tab) <- c("District", "actual_d", "actual_r")
 actual_tab2 <- actual_tab %>% group_by(District) %>% dplyr::summarise(dem_votes=sum(actual_d), rep_votes = sum(actual_r))
 
-length(which(actual_tab2[,2] > actual_tab2[,3])) #17 times that the dem was greater
-length(which(actual_tab2[,3] > actual_tab2[,2])) #17 times that the dem was greater
+length(which(actual_tab2[,2] > actual_tab2[,3])) #16 times that the dem was greater
+length(which(actual_tab2[,3] > actual_tab2[,2])) #56 times that the rep was greater
 
 con_actual_tab <- cbind(ForR$assembly, ForR$WSADEM12, ForR$WSAREP12)
 con_actual_tab <- as.data.frame(con_actual_tab)
@@ -298,10 +301,11 @@ mod_dat2 <- cbind(mod_dat2[,8], mod_dat2[,1:7])
 #create function that returns predicted values under counterfactual situation
 pred_val <- function(coeffs.Dem, coeffs.Rep, mod_dat, expon){
   #mod_dat <- mod_dat2
-  coeffs.Dem[7] <- 0
-  coeffs.Dem[8] <- 0
-  coeffs.Rep[7] <- 0
-  coeffs.Rep[8] <- 0
+  #no incumbent:
+  # coeffs.Dem[7] <- 0
+  # coeffs.Dem[8] <- 0
+  # coeffs.Rep[7] <- 0
+  # coeffs.Rep[8] <- 0
   
   #test2 <- data.frame(lapply(test, function(x) as.numeric(as.character(x))))
   tableDem <- as.matrix(mod_dat)%*%coeffs.Dem
@@ -349,6 +353,7 @@ coeffs.Rep <- as.numeric(coeffs.Rep)
 v_table_lm <- pred_val(coeffs.Dem, coeffs.Rep, mod_dat, F)
 View(cbind(v_table_lm, con_actual_tab2))
 length(which(v_table_lm[,2] > v_table_lm[,3])) #predicts 40
+length(which(con_actual_tab2[,2] > con_actual_tab2[,3])) #actual 39
 
 ######
 #GLM:
@@ -365,6 +370,7 @@ v_table_glm <- pred_val(coeffs.Dem, coeffs.Rep, mod_dat, T)
 View(cbind(v_table_glm, con_actual_tab2))
 
 length(which(v_table_glm[,2] > v_table_glm[,3])) #still only predicts 34
+length(which(con_actual_tab2[,2] > con_actual_tab2[,3])) #actual 39
 
 
 #write.csv(v_table_lm, file = 'C:/Users/ckell/Dropbox/Gerrycamp Regressions Project/Mayer Project/data/mod_fit/lin_mod.csv')
@@ -392,8 +398,8 @@ mod_dat <- cbind(mod_dat[,8], mod_dat[,1:7], mod_mat2)
 colnames(mod_dat)[1]<- c("int")
 
 #non-spatial modeling
-d.form <- WSADEM12 ~ .
-r.form <- WSAREP12 ~ .
+#d.form <- WSADEM12 ~ .
+#r.form <- WSAREP12 ~ .
 
 d.form <- WSADEM12 ~ PREDEM12 + PREREP12+total_vep +black_vep + hisp_vep + dem_incum + rep_incum +county
 r.form <- WSAREP12 ~ PREDEM12 + PREREP12+total_vep +black_vep + hisp_vep + dem_incum + rep_incum +county
@@ -446,7 +452,7 @@ coeffs.Rep <- as.numeric(coeffs.Rep)
 
 co_v_table_glm <- pred_val(coeffs.Dem, coeffs.Rep, co_dat, T)
 View(cbind(co_v_table_glm, con_actual_tab2))
-length(which(co_v_table_glm[,2] > co_v_table_glm[,3])) #predicts 40
+length(which(co_v_table_glm[,2] > co_v_table_glm[,3])) #predicts 41
 
 
 #linear model
@@ -462,6 +468,8 @@ mspe_tab <- rbind(c(d.lm.mspe, d.glm.mspe, co.d.lm.mspe, co.d.glm.mspe),#, d.sgl
 colnames(mspe_tab) <- c("lin", "glm", "county lm", "county glm")#, "sglmm")
 rownames(mspe_tab) <- c("Democrat", "Republican")
 View(mspe_tab)
+
+xtable(mspe_tab)
 
 #write.csv(co_v_table_lm, file = 'C:/Users/ckell/Dropbox/Gerrycamp Regressions Project/Mayer Project/data/mod_fit/co_lin_mod.csv')
 #write.csv(co_v_table_glm, file = 'C:/Users/ckell/Dropbox/Gerrycamp Regressions Project/Mayer Project/data/mod_fit/co_glm.csv')
@@ -509,6 +517,8 @@ eval_metrics <- cbind(c(eg_lin, eg_glm, eg_co_lin, eg_co_glm),
 colnames(eval_metrics) <- c("Eff Gap", "Mean Med")
 rownames(eval_metrics) <- c("lin", "glm", "county lm", "county glm")
 
+xtable(eval_metrics, digits = 4)
+?xtable
 
 #save.image(file = "C:/Users/ckell/Desktop/Summer 2018/MGGG/Regression/data/wi.ForR.final_workspace.Rdata")
 ```
