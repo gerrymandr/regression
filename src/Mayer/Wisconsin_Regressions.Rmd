@@ -1,0 +1,323 @@
+---
+title: "Wisconsin_Data"
+author: "Jake"
+date: "6/18/2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## read data to csv
+
+```{r cars}
+data = read.csv(file.choose(), header = TRUE)
+data <- data[-6481,]
+#newdata = na.omit(data)
+
+```
+
+## plotting data
+
+
+```{r pressure, echo=FALSE}
+plot(TR07, EC04, xlab = "Percent with 3 or more vehicles", ylab = "Percent unemployed")
+cor(TR07, EC04)
+
+plot(TR01, TR02, xlab = " # Drove alone", ylab = "# Carpooled")
+cor(TR01, TR02)
+ 
+plot(EC01, EC04, xlab = " median income", ylab = "% unemployed? - actually #")
+cor(EC01, EC04)
+
+plot(EC01, ED09, xlab = " median income", ylab = "% bachelors degree or higher")
+cor(EC01, ED09)
+
+
+#history of compared variables
+
+xvar = data$PREDEM12
+xlabel = "dem pres"
+yvar = data$WSADEM12
+ylabel = "dem assembly votes"
+#cor: 0.938
+#R^2: 0.880
+
+xvar = data$HC05
+xlabel = "# medicaid"
+yvar = data$WSADEM12
+ylabel = "dem assembly votes"
+#cor: 0.000
+#R^2: 0.000
+
+xvar = data$HC04
+xlabel = "# medicare"
+yvar = data$WSAREP12
+ylabel = "rep assembly votes"
+#cor: 0.029
+#R^2: 0.000
+
+xvar = data$HC05
+xlabel = "# medicaid"
+yvar = data$WSAREP12
+ylabel = "rep assembly votes"
+#cor: 0.002
+#R^2: 0.000
+
+xvar = data$ED09
+xlabel = "# bachelors degree or higher"
+yvar = data$WSADEM12
+ylabel = "dem assembly votes"
+#cor: 0.028
+#R^2: 0.000
+
+xvar = data$EC02
+xlabel = "# in labor force"
+yvar = data$WSAREP12
+ylabel = "rep assembly votes"
+#cor: 0.016
+#R^2: 0.000
+
+xvar = data$EC03
+xlabel = "# employed"
+yvar = data$WSAREP12
+ylabel = "rep assembly votes"
+#cor: 0.016
+#R^2: 0.000
+
+xvar = data$EC04
+xlabel = "# unemployed"
+yvar = data$WSAREP12
+ylabel = "rep assembly votes"
+#cor: 0.015
+#R^2: 0.000
+
+xvar = data$EC06
+xlabel = "# below 100% poverty"
+yvar = data$EC04
+ylabel = "# unemployed"
+#cor: 0.098
+#R^2: 0.009
+
+
+
+
+# Neither Median Income nor the best education metric showed
+# any relation with either dem assembly votes or rep assembly votes
+
+xvar = data$EC01
+xlabel = "median income"
+yvar = data$WSADEM12
+ylabel = "dem assembly votes"
+#cor: -0.017
+#R^2: 0.000
+
+xvar = data$EC01
+xlabel = "median income"
+yvar = data$WSAREP12
+ylabel = "rep assembly votes"
+#cor:-0.030
+#R^2: 0.000
+
+xvar = data$ED08
+xlabel = "# high school degree or higher"
+yvar = data$WSAREP12
+ylabel = "rep assembly votes"
+#cor: 0.047
+#R^2: 0.002
+
+xvar = data$ED08
+xlabel = "# high school degree or higher"
+yvar = data$WSADEM12
+ylabel = "dem assembly votes"
+#cor: 0.038
+#R^2: 0.001
+
+
+
+# High collinierity amoung educational measures
+
+xvar = data$ED09
+xlabel = "# with bachelors or higher"
+yvar = data$ED08
+ylabel = "# of highschoool or higher"
+#cor: 0.895
+#R^2: 0.800
+
+xvar = data$ED09
+xlabel = "# with bachelors or higher"
+yvar = data$ED07
+ylabel = "# with grad/prof highest"
+#cor: 0.951
+#R^2: 0.905
+
+xvar = data$ED09
+xlabel = "# with bachelors or higher"
+yvar = data$ED06
+ylabel = "# with bachelors highest"
+#cor: 0.970
+#R^2: 0.942
+
+xvar = data$ED08
+xlabel = "# with high school or higher"
+yvar = data$ED06
+ylabel = "# with bachelors highest"
+#cor: 0.924
+#R^2: 0.853
+
+xvar = data$ED08
+xlabel = "# with high school or higher"
+yvar = data$ED03
+ylabel = "# with some high school (highest)"
+#cor: 0.907
+#R^2: 0.832
+
+xvar = data$ED08
+xlabel = "# with high school or higher"
+yvar = data$ED01
+ylabel = "# with less than 9th grade"
+#cor: 0.666
+#R^2: 0.443
+
+xvar = data$ED08
+xlabel = "# with high school or higher"
+yvar = data$ED04
+ylabel = "# with some college"
+#cor: 0.957
+#R^2: 0.917
+
+xvar = data$ED08
+xlabel = "# with high school or higher"
+yvar = data$ED05
+ylabel = "# with associates degree (highest)"
+#cor: 0.881
+#R^2: 0.777
+
+
+# Transportation measures: some coliniearity but no relation to votes
+
+xvar = data$TR02
+xlabel = "# carpooled"
+yvar = data$TR03
+ylabel = "# took public transportation"
+#cor: 0.002
+#R^2: 0.000
+
+xvar = data$TR04
+xlabel = "# no vehicle"
+yvar = data$TR03
+ylabel = "# took public transportation"
+#cor: 0.086
+#R^2: 0.007
+
+xvar = data$TR06
+xlabel = "# two vehicles"
+yvar = data$TR07
+ylabel = "# three vehichles"
+#cor: 0.648
+#R^2: 0.420
+
+xvar = data$TR06
+xlabel = "# two vehicles"
+yvar = data$TR05
+ylabel = "# one vehichle"
+#cor: 0.485
+#R^2: 0.235
+
+xvar = data$TR07
+xlabel = "# three vehicles"
+yvar = data$TR05
+ylabel = "# one vehichle"
+#cor: 0.635
+#R^2: 0.403
+
+xvar = data$TR05
+xlabel = "# one vehicle"
+yvar = data$TR01
+ylabel = "# drove alone to work"
+#cor: 0.220
+#R^2: 0.048
+
+xvar = data$TR05
+xlabel = "# one vehicle"
+yvar = data$TR02
+ylabel = "# carpooled to work"
+#cor: 0.119
+#R^2: 0.014
+
+xvar = data$TR01
+xlabel = "# drove alone to work"
+yvar = data$TR02
+ylabel = "# carpooled to work"
+#cor: 0.646
+#R^2: 0.417
+
+xvar = data$TR01
+xlabel = "# drove alone to work"
+yvar = data$WSADEM12
+ylabel = "# DEM assembly votes"
+#cor: -0.022
+#R^2: 0.000
+
+xvar = data$TR02
+xlabel = "# carpooled to work"
+yvar = data$WSADEM12
+ylabel = "# DEM assembly votes"
+#cor: -0.012
+#R^2: 0.000
+
+xvar = data$TR03
+xlabel = "# took public transit to work"
+yvar = data$WSADEM12
+ylabel = "# DEM assembly votes"
+#cor: 0.040
+#R^2: 0.001
+
+xvar = data$TR07
+xlabel = "# three cars available"
+yvar = data$WSADEM12
+ylabel = "# DEM assembly votes"
+#cor: -0.031
+#R^2: 0.000
+
+xvar = data$TR07
+xlabel = "# three cars available"
+yvar = data$WSAREP12
+ylabel = "# REP assembly votes"
+#cor: -0.026
+#R^2: 0.000
+
+xvar = data$TR04
+xlabel = "# no cars available"
+yvar = data$TR05
+ylabel = "# one car"
+#cor: 0.342
+#R^2: 0.116
+
+
+data = read.csv(file.choose(), header = TRUE)
+data <- data[-6481,]
+
+xvar = data$TR04
+xlabel = "# no cars available"
+yvar = data$TR05
+ylabel = "# one car"
+#cor: 0.342
+#R^2: 0.116
+
+fit = lm(yvar~xvar)
+plot(xvar,yvar, xlab = xlabel, ylab = ylabel)
+abline(fit)
+
+cor(xvar, yvar, use="complete.obs")
+fit
+summary(fit)
+
+
+
+scatter.smooth(residuals(fit)~predict(fit))
+```
+
+
+
