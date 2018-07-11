@@ -589,6 +589,71 @@ sum(class_act == class_coglm, na.rm=T) #69/72 correct
 ```
 
 
+Test efficiency gap and mean-median score under non-counterfactual scenario.
+```{r}
+non_cf <- function(fitd, fitr){
+  tableDem <- cbind(fitd, con_shp@data$assembly)
+  tableDem <- as.data.frame(tableDem)
+  colnames(tableDem) <- c("votes", "District")
+  
+  length(unique(tableDem$District))
+  
+  v_table_d <- tableDem %>% group_by(District) %>% dplyr::summarise(dem_votes=sum(votes))
+  
+
+  tableRep <- cbind(fitr, con_shp@data$assembly)
+  tableRep <- as.data.frame(tableRep)
+  colnames(tableRep) <- c("votes", "District")
+  
+  v_table_r <- tableRep %>% group_by(District) %>% dplyr::summarise(rep_votes=sum(votes))
+  
+  v_table <- left_join(v_table_d, v_table_r)
+  
+  colnames(v_table) <- c("District", "Dem.Votes", "Rep.Votes")
+  return(v_table)
+}
+
+nocf_lm <- non_cf(c.d.model$fitted.values, c.r.model$fitted.values)
+nocf_glm <- non_cf(c.d.glm_model$fitted.values, c.r.glm_model$fitted.values)
+nocf_colm <- non_cf(co.d.model$fitted.values, co.r.model$fitted.values)
+nocf_coglm <- non_cf(co.d.glm_model$fitted.values, co.r.glm_model$fitted.values)
+
+
+#efficiency gap
+colnames(actual_tab2) <- c("District", "Dem.Votes", "Rep.Votes")
+eg_actual <- efficiency.gap(actual_tab2)
+eg_lin <- efficiency.gap(nocf_lm)
+eg_glm <- efficiency.gap(nocf_glm)
+eg_co_lin <- efficiency.gap(nocf_colm)
+eg_co_glm <- efficiency.gap(nocf_coglm)
+
+#mean-median score
+#calculated by mean(dem_vote_share)-median(dem_vote_share)
+mm_actual <- mean_med(actual_tab2)
+mm_lin <- mean_med(nocf_lm)
+mm_glm <- mean_med(nocf_glm)
+mm_co_lin <- mean_med(nocf_colm)
+mm_co_glm <- mean_med(nocf_coglm)
+
+
+eval_metrics <- cbind(c(eg_actual, eg_lin, eg_glm, eg_co_lin, eg_co_glm),
+                      c(mm_actual, mm_lin, mm_glm, mm_co_lin, mm_co_glm))
+
+colnames(eval_metrics) <- c("Eff Gap", "Mean Med")
+rownames(eval_metrics) <- c("Actual", "lin", "glm", "county lm", "county glm")
+
+eval_metrics <- as.data.frame(eval_metrics)
+
+sd(eval_metrics$`Eff Gap`)
+mean(eval_metrics$`Eff Gap`)
+
+sd(eval_metrics$`Mean Med`)
+mean(eval_metrics$`Mean Med`)
+
+xtable(eval_metrics, digits = 4)
+```
+
+
 
 Lastly, we would also like to incorporate LASSO as a means for variable selection.
 ```{r}
