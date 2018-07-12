@@ -2,6 +2,15 @@ import csv
 import os.path
 import openpyxl as xl
 import numpy as np
+"""
+Consolidata.py
+
+Author: Jordan Kemp
+Date: July 12, 2018
+For VRDI
+
+Combines the prorated LTSB ward data and Blue Book ward cluster data. Exports to XL
+"""
 
 bb = " "
 r_file = "ForR.xlsx"
@@ -78,6 +87,7 @@ class District(object):
 
             self.ltsb = np.concatenate([vote18, vep, incum, misc],0)
             self.asmbly = ltsb_list[0][2].value
+
         except:
             self.ltsb = [0 for i in range(30)]
 
@@ -297,8 +307,8 @@ def export_spreadsheet(districts):
         nr_ws.cell(row=s_row, column=FIP).value = None
 
         if ward_group.ltsb is not None:
-            if not ward_group.ltsb[ARR_INCUM] ==  "0":
-                ward_group.ltsb[ARR_INCUM] = "1"
+            if not int(ward_group.ltsb[ARR_INCUM]) ==  0:
+                ward_group.ltsb[ARR_INCUM] = 1
 
             for i in range(len(ward_group.ltsb)):
 
