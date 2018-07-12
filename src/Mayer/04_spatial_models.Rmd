@@ -43,6 +43,10 @@ Now, we will load the data, including the following:
 ```{r}
 #ward shape files
 #wi_ward
+# Location of ward group data:
+# C:\Users\ckell\Dropbox\Gerrycamp Regressions Project\Mayer Project\Data to be Used in R\CombinedWIData.xslx
+
+
 ward_shp <- readOGR(dsn = "C:/Users/ckell/Dropbox/Gerrycamp Regressions Project/Mayer Project/data", layer = "wiward")
 
 #voting and demographic data
@@ -303,6 +307,21 @@ sum(new_var, na.rm=T)
 View(cbind(r.pred.bym, actual.r, nonb_shp@data$dem_incum, nonb_shp@data$rep_incum, new_var))
 View(cbind(r.pred.bym, actual.r, nonb_shp@data$PREDEM12, nonb_shp@data$PREREP12, new_var))
 View(cbind(r.pred.bym, actual.r, nonb_shp@data$total_vep, nonb_shp@data$black_vep, new_var))
+
+View(cbind(d.pred.ler, actual.d))
+
+View(cbind(r.pred.ler, actual.r))
+
+range(r.pred.ler - actual.r)
+
+View(cbind(r.pred.ler, actual.r, r.pred.ler - actual.r, nonb_shp@data$total_vep))
+
+percentile <- ecdf(nonb_shp@data$persons_18)
+test <- percentile(nonb_shp@data$persons_18)
+
+#should compare percentiles to the error
+
+
 ```
 
 Now, I will compute the MSPE for each model.
@@ -479,7 +498,7 @@ plot(nonb_shp)
 
 ## Plot for Proportion
 #prec_shp@data   <- join(prec_shp@data, data, by="CD_GEOCODI")
-nonb_shp@data$error <- abs(r.pred.bym- actual.r)
+nonb_shp@data$error <- abs(r.pred.ler- actual.r)
 nonb_shp@data$id <- rownames(nonb_shp@data)
 sp_f     <- fortify(nonb_shp)
 sp_f     <- join(sp_f,nonb_shp@data, by="id")
