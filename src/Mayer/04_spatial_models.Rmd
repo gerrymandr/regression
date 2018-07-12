@@ -122,8 +122,12 @@ con_shp <- ward_shp[-unc,]
 #d.form <- CWSADEM12 ~ CPREDEM12 + CPREREP12+PERSONS18 +BLACK18  + HISPANIC18+ IncumD_Pop + IncumR_Pop 
 #r.form <- CWSAREP12 ~ CPREDEM12 + CPREREP12+PERSONS18 +BLACK18  + HISPANIC18+ IncumD_Pop + IncumR_Pop 
 
-d.form <- WSADEM12 ~ PREDEM12 + PREREP12+total_vep +black_vep + hisp_vep + dem_incum + rep_incum 
-r.form <- WSAREP12 ~ PREDEM12 + PREREP12+total_vep +black_vep + hisp_vep + dem_incum + rep_incum 
+#d.form <- WSADEM12 ~ PREDEM12 + PREREP12+total_vep +black_vep + hisp_vep + dem_incum + rep_incum 
+#r.form <- WSAREP12 ~ PREDEM12 + PREREP12+total_vep +black_vep + hisp_vep + dem_incum + rep_incum 
+
+#trying so that there is no overfit
+d.form <- WSADEM12 ~ PREREP12 + total_vep +black_vep + hisp_vep + dem_incum + rep_incum 
+r.form <- WSAREP12 ~ PREDEM12 + total_vep +black_vep + hisp_vep + dem_incum + rep_incum 
 
 #create linear models
 c.d.model <- lm(formula=d.form, data=con_shp@data)
