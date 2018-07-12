@@ -51,12 +51,6 @@ ylabel = "dem assembly votes"
 #cor: 0.000
 #R^2: 0.000
 
-xvar = data$HC04
-xlabel = "# medicare"
-yvar = data$WSAREP12
-ylabel = "rep assembly votes"
-#cor: 0.029
-#R^2: 0.000
 
 xvar = data$HC05
 xlabel = "# medicaid"
@@ -134,6 +128,31 @@ ylabel = "dem assembly votes"
 #cor: 0.038
 #R^2: 0.001
 
+xvar = data$HC01
+xlabel = "# with health care insurance"
+yvar = data$WSADEM12
+ylabel = "Dem assembly votes"
+#cor: -0.003
+#R^2: 0.000
+
+xvar = data$HC01
+xlabel = "# with health care insurance"
+yvar = data$WSAREP12
+ylabel = "Rep assembly votes"
+#cor: 0.003
+#R^2: 0.000
+
+xvar = data$HC04
+xlabel = "# medicare"
+yvar = data$WSAREP12
+ylabel = "rep assembly votes"
+#cor: 0.029
+#R^2: 0.000
+
+
+
+
+
 
 
 # High collinierity amoung educational measures
@@ -195,7 +214,57 @@ ylabel = "# with associates degree (highest)"
 #R^2: 0.777
 
 
+
+# Correlations of health variables 
+
+xvar = data$HC01
+xlabel = "# with health care insurance"
+yvar = data$HC04
+ylabel = "# with medicare"
+#cor: 0.705
+#R^2: 0.497
+
+xvar = data$HC01
+xlabel = "# with health care insurance"
+yvar = data$HC05
+ylabel = "# with medicade"
+#cor: 0.944
+#R^2: 0.891
+
+xvar = data$HC01
+xlabel = "# with health care insurance"
+yvar = data$HC02
+ylabel = "# private health insurance"
+#cor: 0.991
+#R^2: 0.982
+
+xvar = data$HC01
+xlabel = "# with health care insurance"
+yvar = data$HC03
+ylabel = "# public health insurance"
+#cor: 0.989
+#R^2: 0.976
+
+xvar = data$HC02
+xlabel = "# with private health insurance"
+yvar = data$HC03
+ylabel = "# public health insurance"
+#cor: 0.979
+#R^2: 0.959
+
+
+
+
+
+
 # Transportation measures: some coliniearity but no relation to votes
+
+xvar = data$TR01
+xlabel = "# drove alone to work"
+yvar = data$TR02
+ylabel = "# carpooled to work"
+#cor: 0.646
+#R^2: 0.417
 
 xvar = data$TR02
 xlabel = "# carpooled"
@@ -203,6 +272,13 @@ yvar = data$TR03
 ylabel = "# took public transportation"
 #cor: 0.002
 #R^2: 0.000
+
+xvar = data$TR01
+xlabel = "# drove alone to work"
+yvar = data$TR03
+ylabel = "# took public transportation"
+#cor: -0.107
+#R^2: 0.011
 
 xvar = data$TR04
 xlabel = "# no vehicle"
@@ -225,12 +301,26 @@ ylabel = "# one vehichle"
 #cor: 0.485
 #R^2: 0.235
 
+xvar = data$TR04
+xlabel = "# no vehicles"
+yvar = data$TR05
+ylabel = "# one vehichle"
+#cor: 0.342
+#R^2: 0.117
+
 xvar = data$TR07
 xlabel = "# three vehicles"
 yvar = data$TR05
 ylabel = "# one vehichle"
 #cor: 0.635
 #R^2: 0.403
+
+xvar = data$TR04
+xlabel = "# no vehicles"
+yvar = data$TR07
+ylabel = "# three vehichles"
+#cor: 0.314
+#R^2: 0.098
 
 xvar = data$TR05
 xlabel = "# one vehicle"
@@ -239,19 +329,19 @@ ylabel = "# drove alone to work"
 #cor: 0.220
 #R^2: 0.048
 
+xvar = data$TR07
+xlabel = "# 3 vehicles"
+yvar = data$TR01
+ylabel = "# drove alone to work"
+#cor: 0.353
+#R^2: 0.124
+
 xvar = data$TR05
 xlabel = "# one vehicle"
 yvar = data$TR02
 ylabel = "# carpooled to work"
 #cor: 0.119
 #R^2: 0.014
-
-xvar = data$TR01
-xlabel = "# drove alone to work"
-yvar = data$TR02
-ylabel = "# carpooled to work"
-#cor: 0.646
-#R^2: 0.417
 
 xvar = data$TR01
 xlabel = "# drove alone to work"
@@ -288,29 +378,47 @@ ylabel = "# REP assembly votes"
 #cor: -0.026
 #R^2: 0.000
 
-xvar = data$TR04
-xlabel = "# no cars available"
-yvar = data$TR05
-ylabel = "# one car"
-#cor: 0.342
-#R^2: 0.116
+
+
+
+# testing for colinearity in the initial variables
+
+xvar = data$c_black_vep
+xlabel = "black vep"
+yvar = data$hisp_vep
+ylabel = "hispanic vep"
+#cor: 0.178
+#R^2: 0.032
+
+xvar = data$c_black_vep
+xlabel = "black vep"
+yvar = data$total_vep
+ylabel = "total vep"
+#cor: 0.331
+#R^2: 0.109
+
+xvar = data$total_vep
+xlabel = "total vep"
+yvar = data$hisp_vep
+ylabel = "hispanic vep"
+#cor: 0.413
+#R^2: 0.170
+
+
+
 
 
 data = read.csv(file.choose(), header = TRUE)
 data <- data[-6481,]
 
-xvar = data$TR04
-xlabel = "# no cars available"
-yvar = data$TR05
-ylabel = "# one car"
-#cor: 0.342
-#R^2: 0.116
+
+
 
 fit = lm(yvar~xvar)
 plot(xvar,yvar, xlab = xlabel, ylab = ylabel)
 abline(fit)
 
-cor(xvar, yvar, use="complete.obs")
+cor.test(xvar, yvar, use="complete.obs")
 fit
 summary(fit)
 
