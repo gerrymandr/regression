@@ -130,7 +130,7 @@ con_shp <- ward_shp[-unc,]
 #r.form <- WSAREP12 ~ PREDEM12 + PREREP12+total_vep +black_vep + hisp_vep + dem_incum + rep_incum 
 
 #trying so that there is no overfit
-d.form <- WSADEM12 ~ PREREP12 + total_vep +black_vep + hisp_vep + dem_incum + rep_incum 
+d.form <- WSADEM12 ~ PREREP12  +black_vep + hisp_vep + dem_incum + rep_incum 
 r.form <- WSAREP12 ~ PREDEM12 + total_vep +black_vep + hisp_vep + dem_incum + rep_incum 
 
 #create linear models
