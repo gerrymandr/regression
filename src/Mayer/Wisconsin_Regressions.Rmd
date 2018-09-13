@@ -210,7 +210,7 @@ xvar = data$ED08
 xlabel = "# with high school or higher"
 yvar = data$ED05
 ylabel = "# with associates degree (highest)"
-#cor: 0.881
+#cor: 0.881 
 #R^2: 0.777
 
 
